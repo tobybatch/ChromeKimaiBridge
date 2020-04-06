@@ -1,0 +1,33 @@
+{
+    "name": "tobybatch/trello-plugin",
+    "description": "Allow trello user to log time directly into kimai",
+    "homepage": "https://www.trafalgar.net",
+    "type": "kimai-plugin",
+    "version": "0.5",
+    "require": {
+        "kimai/kimai2-composer": "*"
+    },
+    "keywords": [
+        "kimai",
+        "kimai-plugin"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Toby Batch",
+            "email": "tobybatch.tb@gmail.com",
+            "homepage": "https://www.tobybatch.co.uk"
+        }
+    ],
+    "extra": {
+        "kimai": {
+            "require": "1.8",
+            "version": "0.1",
+            "name": "Trello Plugin"
+        }
+    },
+    "scripts": {
+        "codestyle": "php-cs-fixer fix --dry-run --verbose --show-progress=none",
+        "codestyle-fix": "php-cs-fixer fix"
+    }
+}
