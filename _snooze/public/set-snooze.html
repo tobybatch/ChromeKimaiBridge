@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="https://p.trellocdn.com/power-up.min.css">
+    <link rel="stylesheet" href="datepicker.css">
+    <script src="https://p.trellocdn.com/power-up.min.js"></script>
+  </head>
+  <body style="overflow:hidden;">
+    <div class="dpicker-widget">
+      <div class="datepicker-select u-clearfix">
+        <div class="datepicker-select-date">
+          <label class="datepicker-select-label">
+            Date
+            <input id="date-input" class="datepicker-select-input" type="text" placeholder="Enter date">
+          </label>
+        </div>
+        <div class="datepicker-select-time">
+          <label class="datepicker-select-label">
+            Time
+            <input id="time-input" class="datepicker-select-input" type="text" placeholder="Enter time" value="12:00 PM">
+          </label>
+        </div>
+      </div>
+      <div class="pickers js-dpicker-cal">
+        <div id="datepicker"></div>
+      </div>
+      <div class="datepicker-confirm-btns" style="margin-top:4px;">
+        <button id="save-btn" class="mod-primary mod-bottom">Snooze</button>
+        <button id="remove-btn" class="mod-danger mod-bottom remove-date js-remove-date u-hidden" type="button">Remove</button>
+      </div>
+      <div>
+        <hr style="margin:8px 0;">
+        <span class="u-quiet">Snoozing archives the card until the specified date, when it will be brought back to the board.</span>
+      </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-1.7.1.min.js"></script>
+    <script src="./js/moment.js"></script>
+    <script src="./js/pikaday.js"></script>
+    <script src="./js/set-snooze.js"></script>
+  </body>
+</html>
