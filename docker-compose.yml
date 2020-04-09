@@ -20,32 +20,22 @@ services:
             # start_period: 10s
             timeout: 10s
             retries: 3
-
-    node:
-        image: node
-        user: "node"
-        working_dir: /home/node/app
-        environment:
-            - NODE_ENV=production
-        volumes:
-            - ./node:/home/node/app
-        expose:
-            - "8081"
-        command: "npm start"
-
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "10k"
+                max-file: "10"
 
     nginx:
         image: nginx:alpine
         ports:
             - 8443:443
-            - 8444:444
         volumes:
             - ./nginx_site.conf:/etc/nginx/conf.d/default.conf
             - /etc/letsencrypt:/etc/letsencrypt/
             - fpm-kimai:/opt/kimai
         restart: unless-stopped
         depends_on:
-            - node
             - kimai
         healthcheck:
             test:  wget --spider https://nginx/health || exit 1
@@ -53,6 +43,11 @@ services:
             # start_period: 10s
             timeout: 10s
             retries: 3
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "10k"
+                max-file: "10"
 
 volumes:
     fpm-kimai:
