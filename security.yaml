@@ -1,0 +1,65 @@
+security:
+    encoders:
+        App\Entity\User: auto
+
+    providers:
+        chain_provider:
+            chain:
+                providers: [kimai_internal]
+        kimai_ldap:
+            id: App\Ldap\LdapUserProvider
+        kimai_internal:
+            id: App\Security\DoctrineUserProvider
+
+    firewalls:
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+
+        secured_area:
+            pattern: ^/
+            user_checker: App\Security\UserChecker
+            anonymous: true
+            stateless: false
+
+            guard:
+                authenticators:
+                    - App\Security\TokenAuthenticator
+
+            remember_me:
+                secret:   '%kernel.secret%'
+                lifetime: 604800
+                path:     /
+
+            # activate all configured user provider
+            provider: chain_provider
+
+            form_login:
+                check_path: fos_user_security_check
+                login_path: fos_user_security_login
+                csrf_token_generator: security.csrf.token_manager
+
+            logout:
+                path: fos_user_security_logout
+                target: homepage
+
+    access_decision_manager:
+        strategy: unanimous
+        allow_if_all_abstain: false
+
+    role_hierarchy:
+        ROLE_USER:        ~
+        ROLE_TEAMLEAD:    ROLE_USER
+        ROLE_ADMIN:       ROLE_TEAMLEAD
+        ROLE_SUPER_ADMIN: ROLE_ADMIN
+
+    access_control:
+        - { path: '^/auth', roles: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: '^/(%app_locales%)$', role: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: '^/(%app_locales%)/auth', role: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: '^/(%app_locales%)/login', role: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: '^/(%app_locales%)/register', role: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: '^/(%app_locales%)/resetting', role: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: '^/(%app_locales%)/', roles: ROLE_USER }
+        - { path: '^/api', roles: IS_AUTHENTICATED_REMEMBERED }
+        - { path: '^/public/', roles: IS_AUTHENTICATED_REMEMBERED }
