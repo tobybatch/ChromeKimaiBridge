@@ -1,0 +1,22 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+        bind:
+            $dataDirectory: "%kimai.data_dir%"
+
+    KimaiPlugin\TrelloBundle\:
+        resource: '../../*'
+        exclude: '../../{Resources}'
+
+    KimaiPlugin\TrelloBundle\Controller\:
+        resource: '../../Controller'
+        tags: ['controller.service_arguments']
+        public: true
+                
+#    KimaiPlugin\TrelloBundle\Repository\ExtProjectRepository:
+#        class:     Doctrine\ORM\EntityRepository
+#        factory:   ['@doctrine.orm.entity_manager', getRepository]
+#        arguments: ['KimaiPlugin\ChromeExtBundle\Entity\ExtProject']
+        

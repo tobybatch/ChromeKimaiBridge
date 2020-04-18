@@ -1,0 +1,19 @@
+{% extends 'base.html.twig' %}
+
+{% block page_actions %}
+    {# TODO: I'm pretty sure this is not the best way to do this but time is short #}
+    <div class="breadcrumb">
+        <div class="box-tools">
+            <div class="btn-group">
+                <a class="btn btn-default btn-create" href="{{ path('neontribe_ext_projects') }}"><i class="fas fa-list"></i></a>
+                <a class="btn btn-default btn-create" href="{{ path('neontribe_ext_config') }}"><i class="fas fa-cogs"></i></a>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block main %}
+
+    {{ form(form) }}
+
+{% endblock %}
