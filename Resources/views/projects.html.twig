@@ -5,8 +5,8 @@
     <div class="breadcrumb">
         <div class="box-tools">
             <div class="btn-group">
-                <a class="btn btn-default btn-create" href="{{ path('neontribe_ext_projects') }}"><i class="fas fa-list"></i></a>
-                <a class="btn btn-default btn-create" href="{{ path('neontribe_ext_config') }}"><i class="fas fa-cogs"></i></a>
+                <a class="btn btn-default btn-create" href="{{ path('trello_projects') }}"><i
+                            class="fas fa-list"></i></a>
             </div>
 
         </div>
@@ -19,7 +19,7 @@
     <script>
         let path = "{{ path }}";
 
-        $(document).ready(function() {
+        $(document).ready(function () {
             $(".save-project").on("click", function () {
                 var extid = $(this).parent().parent().find('input').val();
                 var projectid = $(this).data("projectid");
@@ -39,33 +39,36 @@
 {% endblock %}
 
 {% block main %}
-{% for customerName, customer in customers %}
-    <div>
-        <ul>
-            <li class='customername'>
-                <a href="#" onclick="$(this).parent().find('table').toggle();">{{ customerName }}</a>
-                <table style="display: none">
-                    <tr><th>Kimai Project</th><th>External ID</th></tr>
-                    {% for project in projects[customerName] %}
-                        <tr class='project'>
-                            <td>{{ project.name }}</td>
-                            {% set extid = project.getMetaField('externalID') %}
-                            {% if extid != null %}
-                                <td><input type="text" value="{{ extid.value }}"/></td>
-                            {% else %}
-                                <td><input type="text" value=""/></td>
-                            {% endif %}
-                            <td>
-                                <a href="#" class="save-project" data-projectid="{{ project.id }}">
-                                    <i class="far fa-save"></i>
-                                </a>
-                            </td>
+    {% for customerName, customer in customers %}
+        <div>
+            <ul>
+                <li class='customername'>
+                    <a href="#" onclick="$(this).parent().find('table').toggle();">{{ customerName }}</a>
+                    <table style="display: none">
+                        <tr>
+                            <th>Kimai Project</th>
+                            <th>External ID</th>
                         </tr>
-                    {% endfor %}
-                </table>
-            </li>
-        </ul>
-    </div>
-{% endfor %}
+                        {% for project in projects[customerName] %}
+                            <tr class='project'>
+                                <td>{{ project.name }}</td>
+                                {% set extid = project.getMetaField('externalID') %}
+                                {% if extid != null %}
+                                    <td><input type="text" value="{{ extid.value }}"/></td>
+                                {% else %}
+                                    <td><input type="text" value=""/></td>
+                                {% endif %}
+                                <td>
+                                    <a href="#" class="save-project" data-projectid="{{ project.id }}">
+                                        <i class="far fa-save"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                </li>
+            </ul>
+        </div>
+    {% endfor %}
 
 {% endblock %}

@@ -1,149 +1,176 @@
 <?php
 namespace KimaiPlugin\TrelloBundle\Controller;
 
-use App\Controller\AbstractController;
-use KimaiPlugin\TrelloBundle\Repository\TrelloRepository;
-use App\Entity\Project;
+use App\Controller\TimesheetAbstractController;
 use App\Entity\ProjectMeta;
-use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
+use App\Entity\Timesheet;
+use App\Entity\TimesheetMeta;
+use App\Form\Type\DateTimePickerType;
+use App\Repository\ActivityRepository;
+use App\Repository\ProjectRepository;
+use App\Repository\TimesheetRepository;
+use App\Timesheet\TimesheetService;
+use KimaiPlugin\TrelloBundle\Repository\TrelloRepository;
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
+use Symfony\Component\Form\Extension\Core\Type\ButtonType;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
+use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
+use Symfony\Component\Form\Extension\Core\Type\TextareaType;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
-use Symfony\Component\HttpFoundation\JsonResponse;
 
 /**
  *
- * @Security("is_granted('view_own_timesheet')")
- * @Route(path="/trello/api/")
+ * @Route(path="/trello/")
+ * @Security("is_granted('create_own_timesheet')")
  */
-class TimesheetController extends AbstractController
+class TimesheetController extends TimesheetAbstractController
 {
-
-    /**
-     * @var TrelloRepository
-     */
-    protected $repository;
     /**
      * @param TrelloRepository $repository
+     * @param TimesheetService $timesheetService
      */
-    public function __construct(TrelloRepository $repository)
-    {
+    public function __construct(
+        TimesheetRepository $repository,
+        TimesheetService $timesheetService
+    ) {
         $this->repository = $repository;
     }
 
     /**
-     * Returns a list of settings.
-     *
-     * @Route(path="/settings", name="neontribe_ext_settigs")
-     * @Security("is_granted('create_own_timesheet')")
+     * @Route(path="logtime/{projectId}/{cardId}", name="logtime", methods={"GET", "POST"})
      *
      * @param Request $request
-     * @return \Symfony\Component\HttpFoundation\Response
+     * @param ProjectRepository $projectRepository
+     * @param ActivityRepository $activityRepository
+     * @param $projectId
+     * @param $cardId
+     * @return \Symfony\Component\HttpFoundation\Response | \Symfony\Component\HttpFoundation\RedirectResponse
      */
-    public function settingsAction(Request $request)
+    public function logtimeAction(
+        Request $request,
+        ProjectRepository $projectRepository,
+        ActivityRepository $activityRepository,
+        $projectId,
+        $cardId)
     {
-        $settings = $this->repository->getConfig();
+        // Find project by id
+        $entityManager = $this->getDoctrine()->getManager();
+        $projectMeta = $entityManager->getRepository(ProjectMeta::class)->findOneByValue($projectId);
+        if (!$projectMeta) {
+            throw $this->createNotFoundException('Could not find valid project meta data.');
+        }
+        $activities = $activityRepository->findByProject($projectMeta->getEntity());
+        if (empty($activities)) {
+            throw $this->createNotFoundException('Could not find valid project.');
+        }
+        $choices = [];
 
-        $response = new JsonResponse($this->repository::toArray($settings));
-        return $response;
-    }
+        foreach ($activities as $activity) {
+            $choices[$activity->getName()] = $activity->getId();
+        }
 
-    /**
-     * Show and update a list of settings.
-     *
-     * @Route(path="/config", name="neontribe_ext_config")
-     * @Security("is_granted('create_own_timesheet')")
-     *
-     * @param Request $request
-     * @return \Symfony\Component\HttpFoundation\Response
-     */
-    public function configAction(Request $request)
-    {
-        $settings = $this->repository->getConfig();
+        $buttonAttr = ['class' => 'btn-time'];
 
-        $form = $this->createFormBuilder($settings)
-            ->add('durationOnly', CheckboxType::class, ['required' => false])
-            ->add('showTags', CheckboxType::class, ['required' => false])
-            ->add('showFixedRate', CheckboxType::class, ['required' => false])
-            ->add('showHourlyRate', CheckboxType::class, ['required' => false])
-            ->add('save', SubmitType::class, ['label' => 'Save'])
+        $form = $this->createFormBuilder(/* Add hidden data here */)
+            ->add('activity', ChoiceType::class, [ 'choices' => $choices ])
+            ->add(
+                'startDateTime',
+                DateTimePickerType::class,
+                [
+                    'html5' => true,
+                    'format' => 'yyyy-MM-dd',
+                    'data' => new \DateTime(),
+                    'widget' => 'single_text',
+                ]
+            )
+            ->add('description', TextareaType::class, [ 'required' => false ])
+            ->add('duration', NumberType::class)
+            ->add('inc15', ButtonType::class, [
+                'label' => '+', 'attr' => array_merge( $buttonAttr, [ 'data-time' => '15'])
+            ])
+            ->add('dec15', ButtonType::class, [
+                'label' => '-', 'attr' => array_merge( $buttonAttr, [ 'data-time' => '-15'])
+            ])
+            ->add('inc60', ButtonType::class, [
+                'label' => '+', 'attr' => array_merge( $buttonAttr, [ 'data-time' => '60'])
+            ])
+            ->add('dec60', ButtonType::class, [
+                'label' => '-', 'attr' => array_merge( $buttonAttr, [ 'data-time' => '-60'])
+            ])
+            ->add('send', SubmitType::class)
             ->getForm();
 
         $form->handleRequest($request);
+
         if ($form->isSubmitted() && $form->isValid()) {
-            $settings = $form->getData();
-            $this->repository->saveConfig($settings);
-            return $this->redirectToRoute('neontribe_ext_config');
-        }
+            // data is an array with "name", "email", and "message" keys
+            $data = $form->getData();
+            dump($data);
+            $activity = $activityRepository->find($data['activity']);
+            $begin = $data['startDateTime'];
+            $duration = \DateInterval::createFromDateString(round($data['duration']) . ' minutes');
+            $end = clone $begin;
+            $end->add($duration);
+            $timesheet = new Timesheet();
+            $timesheet->setActivity($activity);
+            $timesheet->setBegin($begin);
+            $timesheet->setEnd($end);
+            $timesheet->setDescription($data['description']);
+            $timesheet->setProject($activity->getProject());
+            $timesheet->setUser($this->getUser());
 
-        return $this->render('@Trello/settings.html.twig', [
-            'form' => $form->createView(),
-        ]);
+            $cardIdMeta = (new TimesheetMeta())->setName('Trello Card ID')->setValue($cardId);
+            $timesheet->setMetaField($cardIdMeta);
+
+            $entityManager->persist($timesheet);
+            $entityManager->flush();;
+
+            $this->container->get('router');
+            return new RedirectResponse(
+                $this->container->get('router')->generate(
+                    'logtime_sucess', ['projectId' => $projectId, 'cardId' => $cardId]
+                )
+            );
+        }
+        return $this->render(
+            '@Trello/logtime.html.twig',
+            [
+                'form' => $form->createView(),
+            ]
+        );
     }
 
     /**
-     * Returns a list of projects.
+     * @Route(path="logtime/{projectId}/{cardId}/sucess", name="logtime_sucess")
      *
-     * @Route(path="/projects", name="neontribe_ext_projects", methods="GET")
-     * @Security("is_granted('create_own_timesheet')")
-     *
-     * @param Request $request
      * @return \Symfony\Component\HttpFoundation\Response
      */
-    public function projectAction(Request $request)
-    {
-        $entityManager = $this->getDoctrine()->getManager();
-        $projectRepo = $entityManager->getRepository(Project::class);
-        $projects = $projectRepo->findAll();
-
-        $_customers = [];
-        $_projects = [];
-
-        foreach ($projects as $project) {
-            $customer = $project->getCustomer();
-            $customerName = $customer->getName();
-            if (! array_key_exists($customerName, $_customers)) {
-                $_customers[$customerName] = $customer;
-                $_projects[$customerName] = [];
-            }
-            $_projects[$customerName][] = $project;
-            if ($project->getId() == 1) dump($project);
-        }
-
-        return $this->render('@Trello/projects.html.twig', [
-            'customers' => $_customers,
-            'projects' => $_projects,
-            'path' => $url = $this->generateUrl(
-                'neontribe_ext_project_update',
-                 [
-                    'project' => 'PROJECT_ID',
-                    'extid' => 'EXT_ID',
-                     ]
-                 ),
-        ]);
+    public function logtimeSucessAction($projectId, $cardId) {
+        return $this->render(
+            '@Trello/logtime_sucess.html.twig', ['projectId' => $projectId, 'cardId' => $cardId]
+        );
     }
+    /*
+Time button decisions...
+mysql> select count(*) as cnt, duration/60 from kimai2_timesheet group by duration order by cnt desc limit 20;
++-----+-------------+
+| cnt | duration/60 |
++-----+-------------+
+| 539 |     60.0000 |
+| 444 |     30.0000 |
+| 339 |    120.0000 |
+| 190 |    180.0000 |
+| 177 |    240.0000 |
+| 165 |     90.0000 |
+| 153 |     15.0000 |
+| 127 |    300.0000 |
+| 120 |    360.0000 |
+|  85 |     45.0000 |
 
-    /**
-     * Returns a list of projects.
-     *
-     * , methods="POST")
-     * 
-     * @Route(path="/project/{project}/update", name="neontribe_ext_project_update")
-     * @Security("is_granted('create_own_timesheet')")
-     *
-     * @param Request $request
-     * @return \Symfony\Component\HttpFoundation\Response
+
+
      */
-    public function projectUpdateAction(Request $request, Project $project)
-    {
-        $value = $request->query->get("extid");
-        if ($value != null) {
-            $externalId = (new ProjectMeta())->setName('externalID')->setValue($value);
-            $project->setMetaField($externalId);
-            $this->getDoctrine()->getManager()->persist($project);
-            $this->getDoctrine()->getManager()->flush();
-        }
-        return $this->projectAction($request);
-    }
 }

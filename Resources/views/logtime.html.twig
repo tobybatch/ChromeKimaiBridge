@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <!-- I'm guessing this use the webpack jquwry that I guess symfont ships with -->
+    <script src="https://code.jquery.com/jquery-3.5.0.min.js" integrity="sha256-xNzN2a4ltkB44Mc/Jz3pT4iU1cmeR0FkXs4pru/JxaQ=" crossorigin="anonymous"></script>
+    <script src="{{ asset('bundles/trello/logtime.js') }}"></script>
+</head>
+<body>
+<h1>Log time</h1>
+{{ form_start(form) }}
+<div class="trello-form-error">
+    {{ form_errors(form) }}
+</div>
+
+<div class="row">
+    <div class="col">
+        {{ form_row(form.activity) }}
+    </div>
+</div>
+<div class="row">
+    <div class="col">
+        {{ form_row(form.startDateTime) }}
+    </div>
+</div>
+<div class="row">
+    Time quick select:<br>
+    {{ form_widget(form.dec15) }} 15m {{ form_widget(form.inc15) }}<br />
+    {{ form_widget(form.dec60) }} 60m {{ form_widget(form.inc60) }}<br />
+    Or enter time spent in minutes (e.g. 90):
+    {{ form_row(form.duration) }}
+</div>
+<div class="row">
+    <div class="col">
+        {{ form_row(form.description) }}
+    </div>
+</div>
+<div class="row">
+    <div class="col">
+        {{ form_row(form.send) }}
+    </div>
+</div>
+{{ form_end(form) }}
+</body>
+</html>
+

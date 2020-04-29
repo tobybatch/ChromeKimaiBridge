@@ -1,5 +1,5 @@
 security:
     firewalls:
         trello:
-            pattern: ^/trello
+            pattern: ^/trello/powerup
             security: false

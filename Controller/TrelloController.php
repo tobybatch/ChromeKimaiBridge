@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
- * @Route(path="/trello")
+ * @Route(path="/trello/powerup")
  */
 final class TrelloController extends AbstractController
 {
@@ -24,17 +24,6 @@ final class TrelloController extends AbstractController
      * @return \Symfony\Component\HttpFoundation\Response
      */
     public function indexAction(Request $request)
-    {
-        return $this->render('@Trello/index.html.twig');
-    }
-
-    /**
-     * @Route(path="/logtime", name="logtime", methods={"GET", "POST"})
-
-     * @param Request $request
-     * @return \Symfony\Component\HttpFoundation\Response
-     */
-    public function logtimeAction(Request $request)
     {
         return $this->render('@Trello/index.html.twig');
     }

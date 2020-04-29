@@ -3,30 +3,30 @@ namespace KimaiPlugin\TrelloBundle\EventSubscriber;
 
 use App\Entity\EntityWithMetaFields;
 use App\Entity\MetaTableTypeInterface;
-use App\Entity\ProjectMeta;
-use App\Event\ProjectMetaDefinitionEvent;
+use App\Entity\TimesheetMeta;
+use App\Event\TimesheetMetaDefinitionEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Validator\Constraints\Length;
 
-class ProjectFieldSubscriber implements EventSubscriberInterface
+class TimesheetFieldSubscriber implements EventSubscriberInterface
 {
     public static function getSubscribedEvents(): array
     {
         return [
-            ProjectMetaDefinitionEvent::class => ['loadProjectMeta', 200],
+            TimesheetMetaDefinitionEvent::class => ['loadTimesheetMeta', 200],
         ];
     }
 
-    public function loadProjectMeta(ProjectMetaDefinitionEvent $event)
+    public function loadTimesheetMeta(TimesheetMetaDefinitionEvent $event)
     {
-        $this->prepareEntity($event->getEntity(), new ProjectMeta());
+        $this->prepareEntity($event->getEntity(), new TimesheetMeta());
     }
 
     private function prepareEntity(EntityWithMetaFields $entity, MetaTableTypeInterface $definition)
     {
         $definition
-            ->setName('Trello Board ID')
+            ->setName('Trello Card ID')
             ->setType(TextType::class)
             ->addConstraint(new Length(['max' => 255]))
             ->setIsVisible(true);
