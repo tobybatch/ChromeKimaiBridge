@@ -11,15 +11,15 @@ Goto plugin admin.
     // we can access Bluebird Promises as follows
     window.Promise = TrelloPowerUp.Promise;
 
-    TrelloPowerUp.initialize({
-        'card-buttons': function(t, opts) {
-            return t.get('member', 'private', 'token')
-                .then(function(token){
-                    return [{
-                        // icon: 'https://www.kimai.org/assets/icon/apple-touch-icon.png',
-                        text: 'Kimai',
-                        callback: function(context) {
-                            /*
+TrelloPowerUp.initialize({
+    'card-buttons': function(t, opts) {
+        return t.get('member', 'private', 'token')
+            .then(function(token){
+                return [{
+                    icon: 'https://www.kimai.org/assets/icon/apple-touch-icon.png',
+                    text: 'Kimai',
+                    callback: function(context) {
+                        /*
                             if (!token) {
                                 context.popup({
                                     title: 'Authorize Your Account',
@@ -33,17 +33,31 @@ Goto plugin admin.
                                     height: 411
                                 });
                             }
-                            */
-                            return context.popup({
-                                title: 'Log Time',
-                                url: "{{ path('logtime', { projectId: 123, cardId: 456 }, relative = false) }}",
-                                height: 500
-                            });
-                        }
-                    }];
-                });
-        }
-    });
+                         */
+                        // This is a temp solution that works but if you're not logged into kimai it shows the log in page an post login.
+                        // We need to check if this URL gives a 403, and if it does then display this page instead:
+                        //  {{ path('trello_login', {}, relative = false) }}
+                        return context.popup({
+                            title: 'Log Time',
+                            url: "{{ path('trello_logtime', { projectId: 123, cardId: 456 }, relative = false) }}",
+                            height: 500
+                        });
+                    }
+                }];
+            });
+    },
+    'card-back-section': function(t, opt){
+        return {
+                  icon: 'https://commons.wikimedia.org/wiki/Category:Arrow_icons#/media/File:Font_Awesome_5_solid_exchange-alt.svg',
+                  title: 'Time logged',
+                  content: {
+                      type: 'iframe',
+                      url: "https://https://tobias.neontribe.co.uk/",
+                      height: 230 // Max height is 500
+                  }
+                };
+    }
+});
 </script>
 </body>
 </html>
