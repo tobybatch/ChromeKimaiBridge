@@ -40,7 +40,7 @@ class TimesheetController extends TimesheetAbstractController
     }
 
     /**
-     * @Route(path="logtime/{projectId}/{cardId}", name="logtime", methods={"GET", "POST"})
+     * @Route(path="logtime/{projectId}/{cardId}", name="trello_logtime", methods={"GET", "POST"})
      *
      * @param Request $request
      * @param ProjectRepository $projectRepository
@@ -131,7 +131,7 @@ class TimesheetController extends TimesheetAbstractController
             $this->container->get('router');
             return new RedirectResponse(
                 $this->container->get('router')->generate(
-                    'logtime_sucess', ['projectId' => $projectId, 'cardId' => $cardId]
+                    'trello_logtime_sucess', ['projectId' => $projectId, 'cardId' => $cardId]
                 )
             );
         }
@@ -144,7 +144,7 @@ class TimesheetController extends TimesheetAbstractController
     }
 
     /**
-     * @Route(path="logtime/{projectId}/{cardId}/sucess", name="logtime_sucess")
+     * @Route(path="logtime/{projectId}/{cardId}/sucess", name="trello_logtime_sucess")
      *
      * @return \Symfony\Component\HttpFoundation\Response
      */

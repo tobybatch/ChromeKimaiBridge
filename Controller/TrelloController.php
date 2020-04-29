@@ -27,4 +27,15 @@ final class TrelloController extends AbstractController
     {
         return $this->render('@Trello/index.html.twig');
     }
+
+    /**
+     * @Route(path="/login", name="trello_login", methods={"GET"})
+
+     * @param Request $request
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    public function loginAction(Request $request)
+    {
+        return $this->render('@Trello/login.html.twig');
+    }
 }
