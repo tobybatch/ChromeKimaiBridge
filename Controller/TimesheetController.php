@@ -40,7 +40,7 @@ class TimesheetController extends TimesheetAbstractController
     }
 
     /**
-     * @Route(path="logtime/{projectId}/{cardId}", name="trello_logtime", methods={"GET", "POST"})
+     * @Route(path="logtime/{cardId}", name="trello_loggedtime", methods={"GET", "POST"})
      *
      * @param Request $request
      * @param ProjectRepository $projectRepository
@@ -49,6 +49,40 @@ class TimesheetController extends TimesheetAbstractController
      * @param $cardId
      * @return \Symfony\Component\HttpFoundation\Response | \Symfony\Component\HttpFoundation\RedirectResponse
      */
+    public function loggedTimeAction(
+        Request $request,
+        ProjectRepository $projectRepository,
+        ActivityRepository $activityRepository,
+        $cardId)
+    {
+        // Find card by id
+        $entityManager = $this->getDoctrine()->getManager();
+        $timesheetMetas = $entityManager->getRepository(TimesheetMeta::class)->findByValue($cardId);
+
+        $timesheets = [];
+        foreach ($timesheetMetas as $timesheet) {
+            $timesheets[] = $timesheet->getEntity();
+        }
+
+        return $this->render(
+            '@Trello/loggedtime.html.twig',
+            [
+                'timesheets' => $timesheets,
+            ]
+        );
+
+    }
+
+        /**
+         * @Route(path="logtime/{projectId}/{cardId}", name="trello_logtime", methods={"GET", "POST"})
+         *
+         * @param Request $request
+         * @param ProjectRepository $projectRepository
+         * @param ActivityRepository $activityRepository
+         * @param $projectId
+         * @param $cardId
+         * @return \Symfony\Component\HttpFoundation\Response | \Symfony\Component\HttpFoundation\RedirectResponse
+         */
     public function logtimeAction(
         Request $request,
         ProjectRepository $projectRepository,
