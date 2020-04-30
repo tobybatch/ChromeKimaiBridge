@@ -13,6 +13,12 @@ Goto plugin admin.
 
 TrelloPowerUp.initialize({
     'card-buttons': function(t, opts) {
+        t.card('shortLink').then(function (shortLink) {
+            alert(shortLink['shortLink']);
+        });
+        t.board('shortLink').then(function (shortLink) {
+            alert(shortLink['shortLink']);
+        });
         return t.get('member', 'private', 'token')
             .then(function(token){
                 return [{
@@ -32,12 +38,6 @@ TrelloPowerUp.initialize({
             });
     },
     'card-back-section': function(t, opt){
-        t.card('shortLink').then(function (shortLink) {
-            alert(shortLink['shortLink']);
-        });
-        t.board('shortLink').then(function (shortLink) {
-            alert(shortLink['shortLink']);
-        });
         return {
                   icon: 'https://tobias.neontribe.co.uk/bundles/trello/kimai-grey.png',
                   title: 'Time logged',
