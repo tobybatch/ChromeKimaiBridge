@@ -68,6 +68,7 @@ class TimesheetController extends TimesheetAbstractController
             '@Trello/loggedtime.html.twig',
             [
                 'timesheets' => $timesheets,
+                'cardId' => $cardId,
             ]
         );
 

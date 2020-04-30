@@ -16,30 +16,15 @@ TrelloPowerUp.initialize({
         return t.get('member', 'private', 'token')
             .then(function(token){
                 return [{
-                    icon: 'https://www.kimai.org/assets/icon/apple-touch-icon.png',
+                    icon: 'https://tobias.neontribe.co.uk/bundles/trello/kimai-grey.png',
                     text: 'Kimai',
                     callback: function(context) {
-                        /*
-                            if (!token) {
-                                context.popup({
-                                    title: 'Authorize Your Account',
-                                    url: './auth.html',
-                                    height: 75
-                                });
-                            } else {
-                                return context.popup({
-                                    title: 'Change Snooze Time',
-                                    url: './set-snooze.html',
-                                    height: 411
-                                });
-                            }
-                         */
                         // This is a temp solution that works but if you're not logged into kimai it shows the log in page an post login.
                         // We need to check if this URL gives a 403, and if it does then display this page instead:
                         //  {{ path('trello_login', {}, relative = false) }}
                         return context.popup({
                             title: 'Log Time',
-                            url: "{{ path('trello_logtime', { projectId: 123, cardId: 456 }, relative = false) }}",
+                            url: "{{ url('trello_logtime', { projectId: 123, cardId: 456 }) }}",
                             height: 500
                         });
                     }
@@ -47,13 +32,19 @@ TrelloPowerUp.initialize({
             });
     },
     'card-back-section': function(t, opt){
+        t.card('shortLink').then(function (shortLink) {
+            alert(shortLink['shortLink']);
+        });
+        t.board('shortLink').then(function (shortLink) {
+            alert(shortLink['shortLink']);
+        });
         return {
-                  icon: 'https://commons.wikimedia.org/wiki/Category:Arrow_icons#/media/File:Font_Awesome_5_solid_exchange-alt.svg',
+                  icon: 'https://tobias.neontribe.co.uk/bundles/trello/kimai-grey.png',
                   title: 'Time logged',
                   content: {
                       type: 'iframe',
-                      url: "https://https://tobias.neontribe.co.uk/",
-                      height: 230 // Max height is 500
+                      url: "{{ url('trello_loggedtime', { cardId: 456 }) }}",
+                      height: 100 // Max height is 500
                   }
                 };
     }
