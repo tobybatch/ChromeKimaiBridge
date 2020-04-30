@@ -11,6 +11,7 @@ use App\Repository\ProjectRepository;
 use App\Repository\TimesheetRepository;
 use App\Timesheet\TimesheetService;
 use KimaiPlugin\TrelloBundle\Repository\TrelloRepository;
+use Psr\Log\LoggerInterface;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
 use Symfony\Component\Form\Extension\Core\Type\ButtonType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -74,18 +75,20 @@ class TimesheetController extends TimesheetAbstractController
 
     }
 
-        /**
-         * @Route(path="logtime/{projectId}/{cardId}", name="trello_logtime", methods={"GET", "POST"})
-         *
-         * @param Request $request
-         * @param ProjectRepository $projectRepository
-         * @param ActivityRepository $activityRepository
-         * @param $projectId
-         * @param $cardId
-         * @return \Symfony\Component\HttpFoundation\Response | \Symfony\Component\HttpFoundation\RedirectResponse
-         */
+    /**
+     * @Route(path="logtime/{projectId}/{cardId}", name="trello_logtime", methods={"GET", "POST"})
+     *
+     * @param Request $request
+     * @param LoggerInterface $logger
+     * @param ProjectRepository $projectRepository
+     * @param ActivityRepository $activityRepository
+     * @param $projectId
+     * @param $cardId
+     * @return \Symfony\Component\HttpFoundation\Response | \Symfony\Component\HttpFoundation\RedirectResponse
+     */
     public function logtimeAction(
         Request $request,
+        LoggerInterface $logger,
         ProjectRepository $projectRepository,
         ActivityRepository $activityRepository,
         $projectId,
@@ -95,11 +98,21 @@ class TimesheetController extends TimesheetAbstractController
         $entityManager = $this->getDoctrine()->getManager();
         $projectMeta = $entityManager->getRepository(ProjectMeta::class)->findOneByValue($projectId);
         if (!$projectMeta) {
-            throw $this->createNotFoundException('Could not find valid project meta data.');
+            $logger->error('Could not find valid project meta data');
+            return new RedirectResponse(
+                $this->container->get('router')->generate(
+                    'trello_logtime_boardnotfound', ['projectId' => $projectId, 'cardId' => $cardId]
+                )
+            );
         }
         $activities = $activityRepository->findByProject($projectMeta->getEntity());
         if (empty($activities)) {
-            throw $this->createNotFoundException('Could not find valid project.');
+            $logger->error('Could not find valid project');
+            return new RedirectResponse(
+                $this->container->get('router')->generate(
+                    'trello_logtime_boardnotfound', ['projectId' => $projectId, 'cardId' => $cardId]
+                )
+            );
         }
         $choices = [];
 
@@ -186,6 +199,17 @@ class TimesheetController extends TimesheetAbstractController
     public function logtimeSucessAction($projectId, $cardId) {
         return $this->render(
             '@Trello/logtime_sucess.html.twig', ['projectId' => $projectId, 'cardId' => $cardId]
+        );
+    }
+
+    /**
+     * @Route(path="logtime/{projectId}/{cardId}/boardnotfound", name="trello_logtime_boardnotfound")
+     *
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    public function logtimeBoardNotFoundAction($projectId, $cardId) {
+        return $this->render(
+            '@Trello/logtime_boardnotfound.html.twig', ['projectId' => $projectId, 'cardId' => $cardId]
         );
     }
     /*

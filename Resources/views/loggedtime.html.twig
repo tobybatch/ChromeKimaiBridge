@@ -7,16 +7,20 @@
 <div>
   <!-- {{ cardId }} -->
 </div>
-{% for timesheet in timesheets %}
-    <div>
-        <a href="{{ path('timesheet_edit', { id: timesheet.id }, relative = false ) }}" target="_blank">
-            {{ timesheet.begin | date('Y-m-d') }},
-            {{ timesheet.duration }},
-            {{ timesheet.user.username }},
-            {{ timesheet.activity.name }}
-        </a>
-    </div>
-{% endfor %}
+{%  if timesheets is empty %}
+    <div>No time logged found.</div>
+{% else %}
+    {% for timesheet in timesheets %}
+        <div>
+            <a href="{{ path('timesheet_edit', { id: timesheet.id }, relative = false ) }}" target="_blank">
+                {{ timesheet.begin | date('Y-m-d') }},
+                {{ timesheet.duration }},
+                {{ timesheet.user.username }},
+                {{ timesheet.activity.name }}
+            </a>
+        </div>
+    {% endfor %}
+{% endif %}
 </body>
 </html>
 

@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <!-- I'm guessing this use the webpack jquwry that I guess symfont ships with -->
+    <script src="https://code.jquery.com/jquery-3.5.0.min.js" integrity="sha256-xNzN2a4ltkB44Mc/Jz3pT4iU1cmeR0FkXs4pru/JxaQ=" crossorigin="anonymous"></script>
+</head>
+<body>
+<h2>Board not found</h2>
+I couldn't find a project associated with the board {{ projectId }}.  You (or a project administrator)
+needs to log into your Kimai and <a href="{{ path('admin_project', {}, relative = false ) }}" target="_blank">set the
+Trello Board ID</a> to {{ projectId }}.  Then refresh this page and you should be able to log time here.
+</body>
+</html>
+
