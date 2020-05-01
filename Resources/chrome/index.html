@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+    <meta content="utf-8" http-equiv="encoding">
+  <title>Test Frame</title>
+  <script src="js/jquery/jquery.js"></script>
+  <script src="node_modules/moment/moment.js"></script>
+  <script src="js/old/chrome-ext.js"></script>
+  <script>
+      kimaiUrl = 'http://localhost:8001';
+  </script>
+  <style>
+    label {
+      width: 100px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+
+<!-- DEBUG. -->
+<div id='data'>
+    <select id="url" name="url">
+      <option>https://trello.com/c/txp6heU1/89-badge-cm-70</option>
+        <option>https://github.com/someorg/someproject/issues/123</option>
+    </select>
+    <button name="Update" id="update">Update</button>
+</div>
+<hr />
+<!-- end DEBUG -->
+
+<div id="login" style="display: none">
+    <div>You need to login to Kimai to use this extension.</div>
+    <div>Click <button onClick="gotoKimai();">here</button> to open a new tab.</div>
+    <div>Once you are logged in you can close the kimai tab.</div>
+</div>
+
+<div id="openoptions" style="display: none">
+    <div>Your Kimai instance cannot be reached.</div>
+
+    <div>To update the kimai URL right click the extension button and choose options.</div>
+</div>
+
+<div id='feedback'>
+
+</div>
+
+<div>
+  <ul id='timesheets'>
+  </ul>
+</div>
+
+<div id="log-time">
+        <p id="project-group">
+          <label for="project">Project</label>
+          <select id="project" name="project">
+            </select>
+        </p>
+        <p id="activty-group">
+          <label for="activity">Activity</label>
+          <select id="activity" name="activity"></select>
+        </p>
+        <p id="startdate-group">
+          <label for="start">Start:</label>
+          <input id="start" type="date" name="start" />
+        </p>
+        <p id="endate-group">
+          <label for="end">End:</label>
+          <input id="end" type="date" name="end" />
+        </p>
+        <p id="duration-group">
+          <label for="duration">Duration (minutes):</label>
+          <input id="duration" type="number" name="duration" />
+        </p>
+        <p id="description-group">
+          <label for="description">Description:</label>
+          <input id="description" name="description" />
+        </p>
+        <p id="tags-group">
+          <label for="tags">Tags:</label>
+          <input id="tags" name="tags" />
+        </p>
+        <p id="fixed-rate-group">
+          <label for="fixed-rate">Fixed rate:</label>
+          <input id="fixed-rate" name="fixed-rate" />
+        </p>
+        <p id="hourly-rate-group">
+          <label for="hourly-rate">Hourly rate:</label>
+          <input id="hourly-rate" name="hourly-rate" />
+        </p>
+        <p>
+          <input type="button" id="submit" name="submit" value="submit" />
+        </p>
+</div>
+
+<script>
+  $( document ).ready(function() {
+    var projAndIssue;
+    var settings;
+
+      // DEBUG STUFF
+      $('#update').on('change', function () {
+          init($(this).val());
+      });
+      // end DEBUG STUFF
+
+    $("#project").on('change', function () {
+      updateActivities($(this).val())}
+    );
+
+    $('#submit').on("click", function(){
+      var start = new Date($("#start").val());
+      var end = new Date($("#end").val());
+      var project = $("#project").val();
+      var activity = $("#activity").val();
+      var description = $("#description").val();
+      var tags = $("#tags").val();
+      var fixedrate = $("#fixed-rate").val();
+      var hourlyrate = $("#hourly-rate").val();
+      var duration = $('#duration').val();
+      
+      if (duration > 0) {
+        end = moment(start).add(duration, 'm').toDate();
+      }
+      tags = tags + projAndIssue.project + ',' + projAndIssue.issue;
+
+      data = {
+        "begin": start.toISOString(),
+        "end": end.toISOString(),
+        "project": project,
+        "activity": activity,
+        "description": description,
+        "tags": tags,
+        "fixedRate": fixedrate,
+        "hourlyRate": hourlyrate,
+      };
+
+      $.ajax({
+          url: kimaiUrl + '/api/timesheets',
+          data: data,
+          type: 'POST',
+          beforeSend: function (request) {
+              request.setRequestHeader("X-AUTH-SESSION", "THING-1");
+          },
+          headers: {
+              'X-AUTH-SESSION': "THING-1",
+          },
+          success: function (data) {
+            console.log(data);
+          },
+          error: console.log,
+          async: false
+      });
+    });
+
+    function init(url) {
+        settings = getSettings();
+        if (settings.durationOnly) {
+            // Hide end time, show duration
+            $("#endate-group").hide();
+            $("#duration-group").show();
+        }
+        else {
+            // Show end time, hide duration
+            $("#endate-group").show();
+            $("#duration-group").hide();
+        }
+
+        if (!settings.showTags) {
+            $("#tags-group").hide();
+        }
+
+        if (!settings.showFixedRate) {
+            $("#fixed-rate-group").hide();
+        }
+
+        if (!settings.showHourlyRate) {
+            $("#hourly-rate-group").hide();
+        }
+
+        // Check if we can hit kimai, display error if unreachable
+        var action = checkKimaiAvailable();
+        if (action == "goto login") {
+            // Check we can log into kimai, open new tab to log if needed.
+            $("#login").slideDown();
+        } else if (action == "unreachable") {
+            // Check if we can hit kimai, display error if unreachable
+            $("#openoptions").slideDown();
+        } else {
+            // If we are on a github or trello get project and activites.
+            $("#issuecard").show();
+            projAndIssue = parseUrl(url);
+            if (!projAndIssue) {
+                return;
+            }
+
+            // Set the project drop down
+            var projects = getProjects();
+            $("#project").find('option').remove();
+            $.each(projects, function (key, value) {
+                $("#project").append($('<option/>', {
+                    value: value.id,
+                    text: value.name
+                }));
+            });
+            updateActivities($("#project").val());
+
+            var timesheets = getTimesheets(projAndIssue.issue);
+            var projectId = false;
+            $("#timesheets").find('option').remove();
+            $.each(timesheets, function (key, value) {
+                // var msg = value.date + " " + value.desc + " " + value.who + " " + value.duration;
+                var msg = `${value.begin} ${getActivityName($("#project").val(), value.activity)} ${value.duration / 60} minutes`;
+                $("#timesheets").append(
+                    "<li><a href='kimai timesheet url'>" + msg + "</a></li>"
+                );
+                // Also set the current project if not set already
+                if (!projectId) {
+                  projectId = value.project;
+                }
+            });
+
+            // If we have at least one timesheet the project will exist and we can set it.
+            if (projectId) {
+              $("#project option[value='" + projectId + "']").prop('selected', true);
+              $("#project-group").hide();
+            }
+        }
+    }
+
+    // This should be the window.location
+    var winloc = $('#url').val();
+    init(winloc);
+  });
+</script>
+
+<hr />
+</body>
+</html>

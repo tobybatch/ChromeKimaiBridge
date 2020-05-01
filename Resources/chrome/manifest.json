@@ -1,0 +1,35 @@
+{
+  "manifest_version": 2,
+  "name": "Kimai Timesheet Bridge",
+  "description": "Allow access to a Kimai timesheet server",
+  "homepage_url": "https://www.neontribe.co.uk",
+  "version": "0.0.1",
+  "background": {
+    "scripts": [
+      "js/background.js"
+    ],
+    "persistent": false
+  },
+  "options_page": "html/options.html",
+  "browser_action": {
+    "default_icon": {
+      "16": "images/icon-16x16.png",
+      "32": "images/icon-32x32.png",
+      "48": "images/icon-48x48.png",
+      "128": "images/icon-128x128.png"
+    },
+    "default_popup": "html/popup.html"
+  },
+  "permissions": [
+    "tabs",
+    "storage",
+    "http://*/*",
+    "https://*/*"
+  ],
+  "icons": {
+    "16": "images/icon-16x16.png",
+    "32": "images/icon-32x32.png",
+    "48": "images/icon-48x48.png",
+    "128": "images/icon-128x128.png"
+  }
+}

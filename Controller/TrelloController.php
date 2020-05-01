@@ -25,7 +25,7 @@ final class TrelloController extends AbstractController
      */
     public function indexAction(Request $request)
     {
-        return $this->render('@Trello/index.html.twig');
+        return $this->render('powerup.html.twig');
     }
 
     /**
