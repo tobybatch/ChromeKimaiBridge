@@ -7,9 +7,12 @@
 </head>
 <body>
 <h2>Board not found</h2>
+<div>
 I couldn't find a project associated with the board {{ projectId }}.  You (or a project administrator)
 needs to log into your Kimai and <a href="{{ path('admin_project', {}, relative = false ) }}" target="_blank">set the
 Trello Board ID</a> to {{ projectId }}.  Then refresh this page and you should be able to log time here.
+</div>
+<div>{{ message }}</div>
 </body>
 </html>
 

@@ -2,23 +2,13 @@
 namespace KimaiPlugin\TrelloBundle\Controller;
 
 use App\Controller\TimesheetAbstractController;
-use App\Entity\ProjectMeta;
-use App\Entity\Timesheet;
 use App\Entity\TimesheetMeta;
-use App\Form\Type\DateTimePickerType;
 use App\Repository\ActivityRepository;
 use App\Repository\ProjectRepository;
-use App\Repository\TimesheetRepository;
-use App\Timesheet\TimesheetService;
 use KimaiPlugin\TrelloBundle\Repository\TrelloRepository;
+use KimaiPlugin\TrelloBundle\Service\TrelloService;
 use Psr\Log\LoggerInterface;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
-use Symfony\Component\Form\Extension\Core\Type\ButtonType;
-use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
-use Symfony\Component\Form\Extension\Core\Type\NumberType;
-use Symfony\Component\Form\Extension\Core\Type\SubmitType;
-use Symfony\Component\Form\Extension\Core\Type\TextareaType;
-use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 
@@ -30,18 +20,28 @@ use Symfony\Component\Routing\Annotation\Route;
 class TimesheetController extends TimesheetAbstractController
 {
     /**
+     * @var TrelloService
+     */
+    private TrelloService $trelloService;
+
+    /**
      * @param TrelloRepository $repository
-     * @param TimesheetService $timesheetService
+     * @param TrelloService $trelloService
      */
     public function __construct(
-        TimesheetRepository $repository,
-        TimesheetService $timesheetService
+        TrelloRepository $repository,
+        TrelloService $trelloService
     ) {
         $this->repository = $repository;
+        $this->trelloService = $trelloService;
     }
 
     /**
      * @Route(path="logtime/{cardId}", name="trello_loggedtime", methods={"GET", "POST"})
+     *
+     * This route handled the card-back-section callback from the Trello power up.  The trello power up has been parked
+     * for now as it couldn't easily be configured for different Kimai instances.  The plugin route can easily handle
+     * different kimai.  This will be factored out unless I can figure out how to set up the Trello power up better.
      *
      * @param Request $request
      * @param ProjectRepository $projectRepository
@@ -66,7 +66,7 @@ class TimesheetController extends TimesheetAbstractController
         }
 
         return $this->render(
-            '@Trello/loggedtime.html.twig',
+            '@Trello/card-back-section.html.twig',
             [
                 'timesheets' => $timesheets,
                 'cardId' => $cardId,
@@ -78,13 +78,15 @@ class TimesheetController extends TimesheetAbstractController
     /**
      * @Route(path="logtime/{projectId}/{cardId}", name="trello_logtime", methods={"GET", "POST"})
      *
+     * This route handled the card-buttons callback from the Trello power up.  See the doc comment above.
+     *
      * @param Request $request
      * @param LoggerInterface $logger
      * @param ProjectRepository $projectRepository
      * @param ActivityRepository $activityRepository
      * @param $projectId
      * @param $cardId
-     * @return \Symfony\Component\HttpFoundation\Response | \Symfony\Component\HttpFoundation\RedirectResponse
+     * @return \Symfony\Component\HttpFoundation\Response
      */
     public function logtimeAction(
         Request $request,
@@ -94,122 +96,105 @@ class TimesheetController extends TimesheetAbstractController
         $projectId,
         $cardId)
     {
-        // Find project by id
-        $entityManager = $this->getDoctrine()->getManager();
-        $projectMeta = $entityManager->getRepository(ProjectMeta::class)->findOneByValue($projectId);
-        if (!$projectMeta) {
-            $logger->error('Could not find valid project meta data');
-            return new RedirectResponse(
-                $this->container->get('router')->generate(
-                    'trello_logtime_boardnotfound', ['projectId' => $projectId, 'cardId' => $cardId]
-                )
+        try {
+            $activities = $this->trelloService->getActivities($projectId);
+        } catch (\RuntimeException $e) {
+            $logger->error($e->getMessage());
+            return $this->render(
+                '@Trello/logtime_boardnotfound.html.twig',
+                ['projectId' => $projectId, 'cardId' => $cardId, 'message' => $e->getMessage()]
             );
         }
-        $activities = $activityRepository->findByProject($projectMeta->getEntity());
-        if (empty($activities)) {
-            $logger->error('Could not find valid project');
-            return new RedirectResponse(
-                $this->container->get('router')->generate(
-                    'trello_logtime_boardnotfound', ['projectId' => $projectId, 'cardId' => $cardId]
-                )
-            );
-        }
-        $choices = [];
 
-        foreach ($activities as $activity) {
-            $choices[$activity->getName()] = $activity->getId();
-        }
-
-        $buttonAttr = ['class' => 'btn-time'];
-
-        $form = $this->createFormBuilder(/* Add hidden data here */)
-            ->add('activity', ChoiceType::class, [ 'choices' => $choices ])
-            ->add(
-                'startDateTime',
-                DateTimePickerType::class,
-                [
-                    'html5' => true,
-                    'format' => 'yyyy-MM-dd',
-                    'data' => new \DateTime(),
-                    'widget' => 'single_text',
-                ]
-            )
-            ->add('description', TextareaType::class, [ 'required' => false ])
-            ->add('duration', NumberType::class)
-            ->add('inc15', ButtonType::class, [
-                'label' => '+', 'attr' => array_merge( $buttonAttr, [ 'data-time' => '15'])
-            ])
-            ->add('dec15', ButtonType::class, [
-                'label' => '-', 'attr' => array_merge( $buttonAttr, [ 'data-time' => '-15'])
-            ])
-            ->add('inc60', ButtonType::class, [
-                'label' => '+', 'attr' => array_merge( $buttonAttr, [ 'data-time' => '60'])
-            ])
-            ->add('dec60', ButtonType::class, [
-                'label' => '-', 'attr' => array_merge( $buttonAttr, [ 'data-time' => '-60'])
-            ])
-            ->add('send', SubmitType::class)
-            ->getForm();
+        $form = $this->trelloService->buildLogForm(
+            $this->createFormBuilder(/* Add hidden data here */),
+            $activities
+        );
 
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            // data is an array with "name", "email", and "message" keys
-            $data = $form->getData();
-            dump($data);
-            $activity = $activityRepository->find($data['activity']);
-            $begin = $data['startDateTime'];
-            $duration = \DateInterval::createFromDateString(round($data['duration']) . ' minutes');
-            $end = clone $begin;
-            $end->add($duration);
-            $timesheet = new Timesheet();
-            $timesheet->setActivity($activity);
-            $timesheet->setBegin($begin);
-            $timesheet->setEnd($end);
-            $timesheet->setDescription($data['description']);
-            $timesheet->setProject($activity->getProject());
-            $timesheet->setUser($this->getUser());
-
-            $cardIdMeta = (new TimesheetMeta())->setName('Trello Card ID')->setValue($cardId);
-            $timesheet->setMetaField($cardIdMeta);
-
-            $entityManager->persist($timesheet);
-            $entityManager->flush();;
-
+            $this->trelloService->processForm($form, $this->getUser(), $cardId);
             $this->container->get('router');
-            return new RedirectResponse(
-                $this->container->get('router')->generate(
-                    'trello_logtime_sucess', ['projectId' => $projectId, 'cardId' => $cardId]
-                )
+            return $this->render(
+                '@Trello/logtime_sucess.html.twig', ['projectId' => $projectId, 'cardId' => $cardId]
             );
         }
+
         return $this->render(
-            '@Trello/logtime.html.twig',
+            'card-buttons.html.twig',
             [
                 'form' => $form->createView(),
             ]
         );
     }
 
-    /**
-     * @Route(path="logtime/{projectId}/{cardId}/sucess", name="trello_logtime_sucess")
-     *
-     * @return \Symfony\Component\HttpFoundation\Response
-     */
-    public function logtimeSucessAction($projectId, $cardId) {
-        return $this->render(
-            '@Trello/logtime_sucess.html.twig', ['projectId' => $projectId, 'cardId' => $cardId]
-        );
-    }
 
     /**
-     * @Route(path="logtime/{projectId}/{cardId}/boardnotfound", name="trello_logtime_boardnotfound")
+     * @Route(path="plugin/{projectId}/{cardId}", name="trello_plugin", methods={"GET", "POST"})
      *
+     * Create the iframe for browser plugins..
+     *
+     * @param Request $request
+     * @param LoggerInterface $logger
+     * @param ProjectRepository $projectRepository
+     * @param ActivityRepository $activityRepository
+     * @param $projectId
+     * @param $cardId
      * @return \Symfony\Component\HttpFoundation\Response
      */
-    public function logtimeBoardNotFoundAction($projectId, $cardId) {
+    public function pluginAction(
+        Request $request,
+        LoggerInterface $logger,
+        ProjectRepository $projectRepository,
+        ActivityRepository $activityRepository,
+        $projectId,
+        $cardId)
+    {
+        // Log time tab
+        try {
+            $activities = $this->trelloService->getActivities($projectId);
+        } catch (\RuntimeException $e) {
+            $logger->error($e->getMessage());
+            return $this->render(
+                '@Trello/logtime_boardnotfound.html.twig',
+                ['projectId' => $projectId, 'cardId' => $cardId, 'message' => $e->getMessage()]
+            );
+        }
+
+        $form = $this->trelloService->buildLogForm(
+            $this->createFormBuilder(/* Add hidden data here */),
+            $activities
+        );
+
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $this->trelloService->processForm($form, $this->getUser(), $cardId);
+            $this->container->get('router');
+            return $this->render(
+                '@Trello/logtime_sucess.html.twig', ['projectId' => $projectId, 'cardId' => $cardId]
+            );
+        }
+
+        // Logged time tab
+        $entityManager = $this->getDoctrine()->getManager();
+        $timesheetMetas = $entityManager->getRepository(TimesheetMeta::class)->findByValue($cardId);
+
+        $timesheets = [];
+        foreach ($timesheetMetas as $timesheet) {
+            $timesheets[] = $timesheet->getEntity();
+        }
+
+
         return $this->render(
-            '@Trello/logtime_boardnotfound.html.twig', ['projectId' => $projectId, 'cardId' => $cardId]
+            '@Trello/pluggin.html.twig',
+            [
+                'form' => $form->createView(),
+                'timesheets' => $timesheets,
+                'boardId' => $projectId,
+                'cardId' => $cardId,
+            ]
         );
     }
     /*

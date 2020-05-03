@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <!-- I'm guessing this use the webpack jquery that I guess symfont ships with -->
+    <link href = "https://code.jquery.com/ui/1.10.4/themes/ui-lightness/jquery-ui.css" rel = "stylesheet">
+    <script src="https://code.jquery.com/jquery-3.5.0.min.js" integrity="sha256-xNzN2a4ltkB44Mc/Jz3pT4iU1cmeR0FkXs4pru/JxaQ=" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.min.js" integrity="sha256-eGE6blurk5sHj+rmkfsGYeKyZx3M4bG+ZlFyA7Kns7E=" crossorigin="anonymous"></script>
+    <script>
+         $(function() {
+            $( "#tabs" ).tabs();
+         });
+    </script>
+
+    <style>
+         #tabs-1{font-size: 14px;}
+         .ui-widget-header {
+            background:#b9cd6d;
+            border: 1px solid #b9cd6d;
+            color: #FFFFFF;
+            font-weight: bold;
+         }
+    </style>
+</head>
+<body>
+<h1>Log time</h1>
+
+
+      <div id = "tabs">
+         <ul>
+            <li><a href = "#tabs-1">Tab 1</a></li>
+            <li><a href = "#tabs-2">Tab 2</a></li>
+         </ul>
+         <div id = "tabs-1">
+
+            {% include '@Trello/logtime.html.twig' %}
+
+         </div>
+         <div id = "tabs-2">
+
+            {% include '@Trello/loggedtime.html.twig' %}
+
+         </div>
+      </div>
+
+</body>
+</html>
+

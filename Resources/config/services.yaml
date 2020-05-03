@@ -14,6 +14,10 @@ services:
         resource: '../../Controller'
         tags: ['controller.service_arguments']
         public: true
+
+    KimaiPlugin\TrelloBundle\Service\:
+        resource: '../../Service'
+        public: true
                 
 #    KimaiPlugin\TrelloBundle\Repository\ExtProjectRepository:
 #        class:     Doctrine\ORM\EntityRepository
