@@ -9,11 +9,22 @@
     <script>
          $(function() {
             $( "#tabs" ).tabs();
+
+            $(".btn-time").on("click", function() {
+                var time = parseInt($("#form_duration").val() || 0);
+                time += parseInt($(this).data('time'));
+                if (time < 15) {
+                    time = 15;
+                }
+                $("#form_duration").val(time);
+            });
          });
     </script>
 
     <style>
-         #tabs-1{font-size: 14px;}
+         #tabs-1 {
+             font-size: 14px;
+         }
          .ui-widget-header {
             background:#b9cd6d;
             border: 1px solid #b9cd6d;
@@ -23,13 +34,11 @@
     </style>
 </head>
 <body>
-<h1>Log time</h1>
-
 
       <div id = "tabs">
          <ul>
-            <li><a href = "#tabs-1">Tab 1</a></li>
-            <li><a href = "#tabs-2">Tab 2</a></li>
+            <li><a href = "#tabs-1">Log Time</a></li>
+            <li><a href = "#tabs-2">Time Logged</a></li>
          </ul>
          <div id = "tabs-1">
 

@@ -16,14 +16,6 @@ function loadIframe(pageDetails) {
     var issue = false;
 
     $("#debug").html("<div id='debug'></div>");
-/*    if (hostname == "github.com" && pathname != "/") {
-        project = path[1] + '-' + path[2];
-        issue = path.join("-");
-        // Just tidy this up, remove the leading -
-        issue = issue.substring(1);
-    }
-    else
-     */
      if (hostname == "trello.com") {
         // get boardname and issue id
         // https://trello.com/c/Lx0R3RTA/28-trello-create-a-new-power-up
@@ -35,27 +27,15 @@ function loadIframe(pageDetails) {
         $("#content").attr("src", items.kimaiurl);
         return;
     }
-
-    /*
-    var url = items.kimaiurl + "/en/chrome-ext";
-
-    if (project != undefined) {
-        url += "/" + project;
-        if (issue != undefined) {
-            url += "/" + issue;
-        }
-    }
-
-    $("#content").attr("src", url);*/
 });
 }
 
 function getTrelloCardData(url, cardId, kimaiurl) {
     $.ajax(url + ".json")
-        .sucess(function (data) {
-            var boardId = data['idBoard'];
+        .success(function (data) {
+            var boardId = data['idBoardSource'];
             // build URL with card ID and board ID
-            url = kimaiurl + "/TRELLOPATH/boardId/cardId";
+            url = kimaiurl + "/chrome/popup/" + boardId + "/" + cardId;
             $("#content").attr("src", url);
         });
 }
@@ -87,7 +67,7 @@ chrome.storage.sync.get({
 
 // Get the background page and ask it for the current URL
 $( document ).ready(function() {
-  chrome.runtime.getBackgroundPage(function(eventPage) {
-    eventPage.getPageDetails(loadIframe);
-  });
+    chrome.runtime.getBackgroundPage(function(eventPage) {
+        eventPage.getPageDetails(loadIframe);
+    });
 });
