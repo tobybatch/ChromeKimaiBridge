@@ -22,6 +22,15 @@ function loadIframe(pageDetails) {
         var cardId = path[2];
         getTrelloCardData(location, cardId, items.kimaiurl)
     }
+    else if (hostname == "github.com" && (path[3] == "issues" || path[3] == "pull") && path.length == 5) {
+        console.log(path);
+        project = path[1] + '-' + path[2];
+        issue = path.join("-");
+        // Just tidy this up, remove the leading -
+        issue = issue.substring(1);
+        url = items.kimaiurl + "/chrome/popup/" + project + "/" + issue;
+        $("#content").attr("src", url);
+    }
     else {
         // It's not github or trello show kimai front page and exit early
         $("#content").attr("src", items.kimaiurl);
