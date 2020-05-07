@@ -25,7 +25,7 @@ $( document ).ready(function() {
   }, function(items) {
     $('#kimaiurl').val(items.kimaiurl);
     if (items.kimaiurl.length > 0) {
-      $('#message').text("I can't reach your Kimai instance.  Make sure it is up and reachable (do you need to be on a VPN)");
+      $('#message').text("I can't reach your Kimai instance.  Make sure it is up and reachable (do you need to be on a VPN?)");
     }
   });
 
