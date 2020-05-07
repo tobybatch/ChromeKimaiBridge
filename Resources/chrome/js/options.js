@@ -27,12 +27,18 @@ $( document ).ready(function() {
   });
 
   $("#save").on('click', function () {
+    var url = $('#kimaiurl').val().replace(/\/$/, "");
     chrome.storage.sync.set({
-      kimaiurl: $('#kimaiurl').val().replace(/\/$/, "")
+      kimaiurl: url
     }, function() {
       // Update status to let user know options were saved.
-      $('#status').html('Options saved.');
+      $('#status').html('Options saved. You can close this tab now.');
+      // this throws "Refused to evaluate a string as JavaScript because 'unsafe-eval'"...
+      setTimeout(8000, window.close);
     });
+
+    // I know this is wrong.  Rob has told me but I can't remeber how to do it properley
+    return false;
   });
 
   // Did we come here with an error?
