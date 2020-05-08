@@ -45,8 +45,12 @@ function getTrelloCardData(url, cardId, kimaiurl) {
         .success(function (data) {
           console.log(data);
             var boardId = data['idBoard'];
-            // build URL with card ID and board ID
-            url = kimaiurl + "/chrome/popup/" + boardId + "/" + cardId;
+            if (typeof boardId !== "undefined") {
+              // build URL with card ID and board ID
+              url = kimaiurl + "/chrome/popup/" + boardId + "/" + cardId;
+            } else {
+              url = kimaiurl;
+            }
             $("#content").attr("src", url);
         });
 }
