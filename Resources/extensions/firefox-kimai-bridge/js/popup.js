@@ -1,25 +1,21 @@
-function loadIframe(pageDetails) {
-    chrome.storage.sync.get({
-    kimaiurl: ""
-}, function(items) {
-    checkKimaiUrl(items.kimaiurl);
+console.log("popup.js");
 
+function loadIframe(kimaiurl, url) {
     // Is this github or trello?
-    var location = new URL(pageDetails.url);
-    var hostname = location.hostname;
-    var pathname = location.pathname;
+    debugger;
+    var hostname = url.hostname;
+    var pathname = url.pathname;
     var path = pathname.split("/");
     var project = false;
     var issue = false;
 
     $("#debug").html("<div id='debug'></div>");
-     if (hostname == "trello.com") {
+    if (hostname == "trello.com") {
         // get boardname and issue id
         // https://trello.com/c/Lx0R3RTA/28-trello-create-a-new-power-up
         var cardId = path[2];
-        getTrelloCardData(location, cardId, items.kimaiurl)
-    }
-    else if (hostname == "github.com" && (path[3] == "issues" || path[3] == "pull") && path.length == 5) {
+        getTrelloCardData(url, cardId, kimaiurl)
+    } else if (hostname == "github.com" && (path[3] == "issues" || path[3] == "pull") && path.length == 5) {
         console.log(path);
         project = path[1] + '-' + path[2];
         issue = path.join("-");
@@ -27,13 +23,11 @@ function loadIframe(pageDetails) {
         issue = issue.substring(1);
         url = items.kimaiurl + "/chrome/popup/" + project + "/" + issue;
         $("#content").attr("src", url);
-    }
-    else {
+    } else {
         // It's not github or trello show kimai front page and exit early
-        $("#content").attr("src", items.kimaiurl);
+        $("#content").attr("src", kimaiurl);
         return;
     }
-});
 }
 
 function getTrelloCardData(url, cardId, kimaiurl) {
@@ -52,34 +46,24 @@ function getTrelloCardData(url, cardId, kimaiurl) {
         });
 }
 
-/**
- * Check if the URL is a valid kimai install.
- * If not valid then open the options page to set it
- *
- * @param kimaiurl
- */
-function checkKimaiUrl(kimaiurl) {
-  if (kimaiurl.length == 0) {
-    chrome.tabs.create({'url': "/html/options.html" });
-  }
-
-  // Check we get a 200 or a 403 from the kimai server
-  $.ajax(kimaiurl)
-    .fail(function(data) {
-      chrome.tabs.create({'url': "/html/options.html?status=" + data.status});
-    });
-}
-
-// On load check if the kimai url is set
-chrome.storage.sync.get({
-    kimaiurl: ""
-}, function(items) {
-    checkKimaiUrl(items.kimaiurl);
-});
-
+// var browser = browser || chrome
 // Get the background page and ask it for the current URL
-$( document ).ready(function() {
-    chrome.runtime.getBackgroundPage(function(eventPage) {
-        eventPage.getPageDetails(loadIframe);
+$(document).ready(function () {
+    var storageItem = browser.storage.local.get('kimaiurl');
+    storageItem.then((res) => {
+        // check kimai url
+        $.ajax(res.kimaiurl)
+            .success(function (data) {
+                browser.tabs.query({currentWindow: true, active: true})
+                    .then((tabs) => {
+                        // loadIframe(res.kimaiurl, tabs[0].url);
+                        loadIframe(res.kimaiurl, "https://stackoverflow.com/questions/11594576/getting-current-browser-url-in-firefox-addon");
+                    })
+            })
+            .fail(function (data) {
+                $("#content").attr("src", "unreachable.html");
+            });
     });
 });
+
+// http://localhost/workspace/kimai/kimai_trello_bundle/public

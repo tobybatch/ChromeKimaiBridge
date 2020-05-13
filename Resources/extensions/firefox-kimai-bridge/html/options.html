@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+  <meta content="utf-8" http-equiv="encoding">
+  <title>Neontribe Timesheet Bridge Options</title>
+  <link type="text/css" rel="stylesheet" href="../css/bootstrap.css">
+  <link type="text/css" rel="stylesheet" href="../css/options.css">
+  <script src="../js/jquery/jquery.js">
+  </script>
+  <script type="module" src="../js/options.js">
+  </script>
+</head>
+<body>
+  <div class="d-flex justify-content-center">
+  <div class="container">
+    <h3>Neontribe Timesheet Bridge Options</h3>
+    <h3 id="message"></h4>
+    <form>
+      <div class="form-group">
+        <label for="kimaiurl">Kimai URL</label>
+        <input type="url" class="form-control" id="kimaiurl" aria-describedby="kimaiurlHelp" placeholder="https://">
+        <small id="kimaiurlHelp" class="form-text text-muted">Enter the full URL to the front page of your kimai instance. e.g. https://kimai.neontribe.co.uk</small>
+      </div>
+      <div id="status"></div>
+        <button id="save" class="btn btn-primary">Save</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

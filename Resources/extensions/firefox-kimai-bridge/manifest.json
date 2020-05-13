@@ -1,0 +1,33 @@
+{
+  "manifest_version": 2,
+  "name": "Kimai Bridge",
+  "version": "0.0.1",
+  "description": "Allow access to a Kimai timesheet server.",
+  "options_ui": { "page": "html/options.html" },
+  "browser_action": {
+    "default_icon": {
+      "16": "images/icon-16x16.png",
+      "32": "images/icon-32x32.png",
+      "48": "images/icon-48x48.png",
+      "128": "images/icon-128x128.png"
+    },
+    "default_popup": "html/popup.html"
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "http://*/*",
+    "https://*/*"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "kimai@neontribe.co.uk"
+    }
+  },
+  "icons": {
+    "16": "images/icon-16x16.png",
+    "32": "images/icon-32x32.png",
+    "48": "images/icon-48x48.png",
+    "128": "images/icon-128x128.png"
+  }
+}
