@@ -2,12 +2,13 @@
 namespace KimaiPlugin\TrelloBundle\Controller;
 
 use App\Controller\TimesheetAbstractController;
+use App\Entity\ProjectMeta;
+use App\Entity\Timesheet;
 use App\Entity\TimesheetMeta;
 use App\Repository\ActivityRepository;
 use App\Repository\ProjectRepository;
 use App\Repository\TimesheetRepository;
 use App\Timesheet\TimesheetService;
-use KimaiPlugin\TrelloBundle\Repository\TrelloRepository;
 use KimaiPlugin\TrelloBundle\Service\TrelloService;
 use Psr\Log\LoggerInterface;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
@@ -25,6 +26,7 @@ class ChromeController extends TimesheetAbstractController
      * @var TimesheetService
      */
     private TimesheetService $timesheetService;
+
     /**
      * @var TrelloService
      */
@@ -63,7 +65,7 @@ class ChromeController extends TimesheetAbstractController
         ProjectRepository $projectRepository,
         ActivityRepository $activityRepository,
         $projectId,
-        $cardId)
+        $cardId = false)
     {
         // Log time tab
         try {
@@ -83,23 +85,30 @@ class ChromeController extends TimesheetAbstractController
 
         $form->handleRequest($request);
 
+        $show = false;
         if ($form->isSubmitted() && $form->isValid()) {
             $this->trelloService->processForm($form, $this->getUser(), $cardId);
             $this->container->get('router');
+            $this->addFlash('success', 'Time logged!');
+            $show = 'tabs-2';
             return $this->render(
-                '@Trello/logtime_sucess.html.twig', ['projectId' => $projectId, 'cardId' => $cardId]
+                '@Trello/pluggin.html.twig', ['projectId' => $projectId, 'cardId' => $cardId]
             );
         }
 
         // Logged time tab
-        $entityManager = $this->getDoctrine()->getManager();
-        $timesheetMetas = $entityManager->getRepository(TimesheetMeta::class)->findByValue($cardId);
-
         $timesheets = [];
-        foreach ($timesheetMetas as $timesheet) {
-            $timesheets[] = $timesheet->getEntity();
+        $entityManager = $this->getDoctrine()->getManager();
+        if ($cardId) {
+            $timesheetMetas = $entityManager->getRepository(TimesheetMeta::class)->findByValue($cardId);
+            foreach ($timesheetMetas as $timesheet) {
+                $timesheets[] = $timesheet->getEntity();
+            }
+        } else {
+            $projectMeta = $entityManager->getRepository(ProjectMeta::class)->findOneBy(["value" => $projectId]);
+            $project = $projectMeta->getEntity();
+            $timesheets = $entityManager->getRepository(Timesheet::class)->findBy(["project" => $project]);
         }
-
 
         return $this->render(
             '@Trello/pluggin.html.twig',
@@ -108,6 +117,7 @@ class ChromeController extends TimesheetAbstractController
                 'timesheets' => $timesheets,
                 'boardId' => $projectId,
                 'cardId' => $cardId,
+                'show' => $show,
             ]
         );
     }

@@ -19,7 +19,7 @@ services:
         resource: '../../Service'
         public: true
                 
-#    KimaiPlugin\TrelloBundle\Repository\ExtProjectRepository:
+#    KimaiPlugin\ChromePluginBundle\Repository\ExtProjectRepository:
 #        class:     Doctrine\ORM\EntityRepository
 #        factory:   ['@doctrine.orm.entity_manager', getRepository]
 #        arguments: ['KimaiPlugin\ChromeExtBundle\Entity\ExtProject']

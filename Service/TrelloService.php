@@ -22,7 +22,7 @@ use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 
 /**
  * Class TrelloService
- * @package KimaiPlugin\TrelloBundle\Service
+ * @package KimaiPlugin\ChromePluginBundle\Service
  */
 class TrelloService {
     /**
@@ -140,8 +140,10 @@ class TrelloService {
         $timesheet->setProject($activity->getProject());
         $timesheet->setUser($user);
 
-        $cardIdMeta = (new TimesheetMeta())->setName('Trello Card ID')->setValue($cardId);
-        $timesheet->setMetaField($cardIdMeta);
+        if ($cardId) {
+            $cardIdMeta = (new TimesheetMeta())->setName('Trello Card ID')->setValue($cardId);
+            $timesheet->setMetaField($cardIdMeta);
+        }
 
         $this->entityManager->persist($timesheet);
         $this->entityManager->flush();

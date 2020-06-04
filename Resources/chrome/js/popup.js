@@ -1,6 +1,3 @@
-
-console.log("popup.js");
-
 function loadIframe(pageDetails) {
     chrome.storage.sync.get({
     kimaiurl: ""
@@ -16,22 +13,32 @@ function loadIframe(pageDetails) {
     var issue = false;
 
     $("#debug").html("<div id='debug'></div>");
-     if (hostname == "trello.com") {
+    if (hostname == "trello.com") {
+        console.log("On trello");
         // get boardname and issue id
         // https://trello.com/c/Lx0R3RTA/28-trello-create-a-new-power-up
         var cardId = path[2];
         getTrelloCardData(location, cardId, items.kimaiurl)
     }
-    else if (hostname == "github.com" && (path[3] == "issues" || path[3] == "pull") && path.length == 5) {
-        console.log(path);
+    else if (hostname == "github.com") {
+        // && (path[3] == "issues" || path[3] == "pull") && path.length == 5) {
+        console.log("On github", path);
+        if (path.length < 3) {
+            console.log("Not on a project page, exit");
+        }
         project = path[1] + '-' + path[2];
-        issue = path.join("-");
-        // Just tidy this up, remove the leading -
-        issue = issue.substring(1);
-        url = items.kimaiurl + "/chrome/popup/" + project + "/" + issue;
+        if (path.length == 5 && ! isNaN(path[4])) {
+            issue = path.join("-");
+            // Just tidy this up, remove the leading -
+            issue = issue.substring(1);
+            url = items.kimaiurl + "/chrome/popup/" + project + "/" + issue;
+        } else {
+            url = items.kimaiurl + "/chrome/popup/" + project;
+        }
         $("#content").attr("src", url);
     }
     else {
+       console.log("Don't know where I am? " + hostname);
         // It's not github or trello show kimai front page and exit early
         $("#content").attr("src", items.kimaiurl);
         return;
@@ -40,14 +47,18 @@ function loadIframe(pageDetails) {
 }
 
 function getTrelloCardData(url, cardId, kimaiurl) {
-  console.log(url + ".json");
     $.ajax(url + ".json")
         .success(function (data) {
-          console.log(data);
             var boardId = data['idBoard'];
-            // build URL with card ID and board ID
-            url = kimaiurl + "/chrome/popup/" + boardId + "/" + cardId;
-            $("#content").attr("src", url);
+            kurl = kimaiurl;
+            if (boardId !== undefined) {
+                // build URL with card ID and board ID
+                kurl += "/chrome/popup/" + boardId + "/" + cardId;
+            }
+            $("#content").attr("src", kurl);
+        })
+        .fail(function (data) {
+            $("#content").attr("src", url)
         });
 }
 

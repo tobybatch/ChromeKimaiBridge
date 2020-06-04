@@ -26,7 +26,7 @@ class TimesheetFieldSubscriber implements EventSubscriberInterface
     private function prepareEntity(EntityWithMetaFields $entity, MetaTableTypeInterface $definition)
     {
         $definition
-            ->setName('Trello Card ID')
+            ->setName('External Card/Project ID')
             ->setType(TextType::class)
             ->addConstraint(new Length(['max' => 255]))
             ->setIsVisible(true);
