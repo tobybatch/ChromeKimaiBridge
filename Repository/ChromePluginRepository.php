@@ -1,11 +1,11 @@
 <?php
-namespace KimaiPlugin\TrelloBundle\Repository;
+namespace KimaiPlugin\ChromePluginBundle\Repository;
 
-use KimaiPlugin\TrelloBundle\Entity\TrelloSetting;
+use KimaiPlugin\ChromePluginBundle\Entity\ChromePluginSetting;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Finder\SplFileInfo;
 
-class TrelloRepository
+class ChromePluginRepository
 {
     /**
      * @var string
@@ -21,11 +21,11 @@ class TrelloRepository
     }
 
     /**
-     * @param TrelloSetting $entity
+     * @param ChromePluginSetting $entity
      * @return bool
      * @throws \Exception
      */
-    public function saveConfig(TrelloSetting $settings)
+    public function saveConfig(ChromePluginSetting $settings)
     {
         if (file_exists($this->settingsFile) && !is_writable($this->settingsFile)) {
             throw new \Exception('Settings file is not writable: ' . $this->settingsFile);
@@ -36,11 +36,11 @@ class TrelloRepository
         return true;
     }
     /**
-     * @return TrelloSetting
+     * @return ChromePluginSetting
      */
     public function getConfig()
     {
-        $entity = new TrelloSetting();
+        $entity = new ChromePluginSetting();
         if (file_exists($this->settingsFile) && is_readable($this->settingsFile)) {
             $entity = self::fromJson(file_get_contents($this->settingsFile));
         }
@@ -49,11 +49,11 @@ class TrelloRepository
 
     /**
      * @param string $json
-     * @return TrelloSetting
+     * @return ChromePluginSetting
      */
     public static function fromJson(string $json) {
         $data = json_decode($json, true);
-        $entity = new TrelloSetting();
+        $entity = new ChromePluginSetting();
 
         if (array_key_exists('durationOnly', $data)) {
             $entity->setDurationOnly($data['durationOnly']);
@@ -75,18 +75,18 @@ class TrelloRepository
     }
 
     /**
-     * @param TrelloSetting $settings
+     * @param ChromePluginSetting $settings
      * @return false|string
      */
-    public static function toJson(TrelloSetting $settings) {
+    public static function toJson(ChromePluginSetting $settings) {
         return json_encode(self::toArray($settings), JSON_PRETTY_PRINT);
     }
 
     /**
-     * @param TrelloSetting $settings
+     * @param ChromePluginSetting $settings
      * @return false|string
      */
-    public static function toArray(TrelloSetting $settings) {
+    public static function toArray(ChromePluginSetting $settings) {
         $data = [
             'durationOnly' => $settings->isDurationOnly(),
             'showTags' => $settings->isShowTags(),

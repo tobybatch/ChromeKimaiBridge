@@ -1,7 +1,7 @@
 {
-    "name": "tobybatch/trello-plugin",
-    "description": "Allow trello user to log time directly into kimai",
-    "homepage": "https://www.trafalgar.net",
+    "name": "tobybatch/chrome-kimai-plugin",
+    "description": "Allow a user to log time directly into kimai",
+    "homepage": "https://www.neontribe.co.uk",
     "type": "kimai-plugin",
     "version": "0.1",
     "require": {
@@ -15,15 +15,15 @@
     "authors": [
         {
             "name": "Toby Batch",
-            "email": "tobybatch.tb@gmail.com",
-            "homepage": "https://www.tobybatch.co.uk"
+            "email": "tobias@neontribe.co.uk",
+            "homepage": "https://www.neontribe.co.uk"
         }
     ],
     "extra": {
         "kimai": {
             "require": "1.5",
             "version": "0.1",
-            "name": "Trello Plugin"
+            "name": "Chrome Plugin"
         }
     },
     "scripts": {

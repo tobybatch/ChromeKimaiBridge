@@ -6,18 +6,18 @@ services:
         bind:
             $dataDirectory: "%kimai.data_dir%"
 
-    KimaiPlugin\TrelloBundle\:
+    KimaiPlugin\ChromePluginBundle\:
         resource: '../../*'
         exclude: '../../{Resources}'
 
-    KimaiPlugin\TrelloBundle\Controller\:
+    KimaiPlugin\ChromePluginBundle\Controller\:
         resource: '../../Controller'
         tags: ['controller.service_arguments']
         public: true
 
-    KimaiPlugin\TrelloBundle\Service\:
-        resource: '../../Service'
-        public: true
+#    KimaiPlugin\ChromePluginBundle\Service\:
+#        resource: '../../Service'
+#        public: true
                 
 #    KimaiPlugin\ChromePluginBundle\Repository\ExtProjectRepository:
 #        class:     Doctrine\ORM\EntityRepository

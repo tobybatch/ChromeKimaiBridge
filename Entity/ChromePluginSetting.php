@@ -1,8 +1,8 @@
 <?php
 
-namespace KimaiPlugin\TrelloBundle\Entity;
+namespace KimaiPlugin\ChromePluginBundle\Entity;
 
-class TrelloSetting
+class ChromePluginSetting
 {
     private $durationOnly = true;
     private $showTags = false;
@@ -19,9 +19,9 @@ class TrelloSetting
 
     /**
      * @param bool $durationOnly
-     * @return TrelloSetting
+     * @return ChromePluginSetting
      */
-    public function setDurationOnly(bool $durationOnly): TrelloSetting
+    public function setDurationOnly(bool $durationOnly): ChromePluginSetting
     {
         $this->durationOnly = $durationOnly;
         return $this;
@@ -37,9 +37,9 @@ class TrelloSetting
 
     /**
      * @param bool $showTags
-     * @return TrelloSetting
+     * @return ChromePluginSetting
      */
-    public function setShowTags(bool $showTags): TrelloSetting
+    public function setShowTags(bool $showTags): ChromePluginSetting
     {
         $this->showTags = $showTags;
         return $this;
@@ -55,9 +55,9 @@ class TrelloSetting
 
     /**
      * @param bool $showFixedRate
-     * @return TrelloSetting
+     * @return ChromePluginSetting
      */
-    public function setShowFixedRate(bool $showFixedRate): TrelloSetting
+    public function setShowFixedRate(bool $showFixedRate): ChromePluginSetting
     {
         $this->showFixedRate = $showFixedRate;
         return $this;
@@ -73,9 +73,9 @@ class TrelloSetting
 
     /**
      * @param bool $showHourlyRate
-     * @return TrelloSetting
+     * @return ChromePluginSetting
      */
-    public function setShowHourlyRate(bool $showHourlyRate): TrelloSetting
+    public function setShowHourlyRate(bool $showHourlyRate): ChromePluginSetting
     {
         $this->showHourlyRate = $showHourlyRate;
         return $this;

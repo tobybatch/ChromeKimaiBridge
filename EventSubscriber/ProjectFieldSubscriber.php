@@ -1,5 +1,5 @@
 <?php
-namespace KimaiPlugin\TrelloBundle\EventSubscriber;
+namespace KimaiPlugin\ChromePluginBundle\EventSubscriber;
 
 use App\Entity\EntityWithMetaFields;
 use App\Entity\MetaTableTypeInterface;
