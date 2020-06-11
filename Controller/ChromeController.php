@@ -127,13 +127,16 @@ class ChromeController extends TimesheetAbstractController
         // Logged time tab
         $timesheets = [];
         if ($cardId) {
-            $timesheetMetas = $this->getDoctrine()->getManager()->getRepository(TimesheetMeta::class)
+            $timesheetMetas = $this->getDoctrine()->getManager()
+                ->getRepository(TimesheetMeta::class)
                 ->findByValue($cardId);
             foreach ($timesheetMetas as $timesheet) {
                 $timesheets[] = $timesheet->getEntity();
             }
         } else {
-            $projectMeta = $projectRepository->findOneBy(["value" => $projectId]);
+            $projectMeta = $this->getDoctrine()->getManager()
+                ->getRepository(ProjectMeta::class)
+                ->findOneBy(["value" => $projectId]);
             $project = $projectMeta->getEntity();
             $timesheets = $timesheetRepository->findBy(["project" => $project]);
         }

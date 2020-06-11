@@ -21,10 +21,13 @@ function loadIframe(pageDetails) {
         getTrelloCardData(location, cardId, items.kimaiurl)
     }
     else if (hostname == "github.com") {
+        debugger;
         // && (path[3] == "issues" || path[3] == "pull") && path.length == 5) {
         console.log("On github", path);
         if (path.length < 3) {
             console.log("Not on a project page, exit");
+            $("#content").attr("src", items.kimaiurl);
+            return;
         }
         project = path[1] + '-' + path[2];
         if (path.length == 5 && ! isNaN(path[4])) {
