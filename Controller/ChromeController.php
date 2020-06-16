@@ -216,7 +216,6 @@ class ChromeController extends TimesheetAbstractController
     private function processForm($form, $user, $cardId) {
         // data is an array with "name", "email", and "message" keys
         $data = $form->getData();
-        dump($data);
         $activity = $this->activityRepository->find($data['activity']);
         $begin = $data['startDateTime'];
         $duration = \DateInterval::createFromDateString(round($data['duration']) . ' minutes');
