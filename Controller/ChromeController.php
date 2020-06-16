@@ -119,9 +119,6 @@ class ChromeController extends TimesheetAbstractController
             $this->container->get('router');
             $this->addFlash('success', 'Time logged!');
             $show = 'tabs-2';
-            return $this->render(
-                '@ChromePlugin/pluggin.html.twig', ['projectId' => $projectId, 'cardId' => $cardId]
-            );
         }
 
         // Logged time tab
