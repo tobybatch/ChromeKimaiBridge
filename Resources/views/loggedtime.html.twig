@@ -4,20 +4,23 @@
     <meta charset="utf-8">
 </head>
 <body>
-{%  if timesheets is empty %}
-    <div>No time logged found.</div>
-{% else %}
-    {% for timesheet in timesheets %}
-        <div>
-            <a href="{{ path('timesheet_edit', { id: timesheet.id }, relative = false ) }}" target="_blank">
-                {{ timesheet.begin | date('Y-m-d') }},
-                {{ timesheet.duration / 60 }}m,
-                {{ timesheet.user.username }},
-                {{ timesheet.activity.name }}
-            </a>
-        </div>
-    {% endfor %}
-{% endif %}
+{% for project_name, activities in timesheets %}
+    <h3>{{ project_name }}</h3>
+    {%  if activities is empty %}
+        <div>No time logged found.</div>
+    {% else %}
+        {% for activity in activities %}
+            <div>
+                <a href="{{ path('timesheet_edit', { id: activity.id }, relative = false ) }}" target="_blank">
+                    {{ activity.begin | date('Y-m-d') }},
+                    {{ activity.duration / 60 }}m,
+                    {{ activity.user.username }},
+                    {{ activity.activity.name }}
+                </a>
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endfor %}
 </body>
 </html>
 

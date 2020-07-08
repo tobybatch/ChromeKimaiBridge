@@ -95,6 +95,7 @@ class ChromeController extends TimesheetAbstractController
         $projectId,
         $cardId = false)
     {
+        $logger->info("Project ID:" . $projectId);
         // Log time tab
         try {
             $activities = $this->getActivities($projectId);
@@ -121,6 +122,8 @@ class ChromeController extends TimesheetAbstractController
             $show = 'tabs-2';
         }
 
+        $projects = $this->getProjectsById($projectId);
+
         // Logged time tab
         $timesheets = [];
         if ($cardId) {
@@ -128,14 +131,12 @@ class ChromeController extends TimesheetAbstractController
                 ->getRepository(TimesheetMeta::class)
                 ->findByValue($cardId);
             foreach ($timesheetMetas as $timesheet) {
-                $timesheets[] = $timesheet->getEntity();
+                $timesheets[$projects[0]->getName()] = $timesheet->getEntity();
             }
         } else {
-            $projectMeta = $this->getDoctrine()->getManager()
-                ->getRepository(ProjectMeta::class)
-                ->findOneBy(["value" => $projectId]);
-            $project = $projectMeta->getEntity();
-            $timesheets = $timesheetRepository->findBy(["project" => $project]);
+            foreach ($projects as $project) {
+                $timesheets[$project->getName()] = $timesheetRepository->findBy(["project" => $project]);
+            }
         }
 
         return $this->render(
@@ -150,23 +151,54 @@ class ChromeController extends TimesheetAbstractController
         );
     }
 
+    private function getProjectsById($projectId) {
+        $builder = $this->entityManager->getRepository(ProjectMeta::class)->createQueryBuilder('p');
+        $query = $builder->where($builder->expr()->like('p.value', ':projectid'))
+            ->setParameter('projectid', '%' . $projectId . '%')
+            ->getQuery();
+        $projectMetas = $query->getResult();
+        if (!count($projectMetas)) {
+            return [];
+        }
+        else {
+            $projects = [];
+            foreach ($projectMetas as $projectMeta) {
+                $projects[] = $projectMeta->getEntity();
+            }
+        }
+        return $projects;
+    }
+
     /**
      * @param $projectId
-     * @return Activity[]
+     * @return array
      */
     private function getActivities($projectId) {
-        $projectMeta = $this->entityManager->getRepository(ProjectMeta::class)->findOneByValue($projectId);
-
-        if (!$projectMeta) {
+        $projects = $this->getProjectsById($projectId);
+        if (count($projects) == 0) {
             throw new ProjectNotFoundException("Could not find valid project meta data");
         }
 
-        $activities = $this->activityRepository->findByProject($projectMeta->getEntity());
-        if (empty($activities)) {
-            throw new NoActivitiesException('Could not find valid project meta data');
+        $activities = [];
+        foreach ($projects as $project) {
+            $projectActivities = $this->activityRepository->findByProject($project);
+            if (count($projectActivities)) {
+                $activities[$project->getName()] = $projectActivities;
+            }
         }
 
-        return $this->activityRepository->findByProject($projectMeta->getEntity());
+        $builder = $this->entityManager->getRepository(Activity::class)->createQueryBuilder('a');
+        $query = $builder->where('a.project IS NULL')->getQuery();
+        $globalActivities = $query->getResult();
+        if (count($globalActivities)) {
+            $activities["__GLOBAL"] = $globalActivities;
+        };
+
+        if (empty($activities)) {
+            throw new NoActivitiesException('Could not find valid activity meta data');
+        }
+
+        return $activities;
     }
 
     /**
@@ -177,8 +209,12 @@ class ChromeController extends TimesheetAbstractController
     private function buildLogForm(FormBuilderInterface $formbuilder, array $activities) {
         $choices = [];
 
-        foreach ($activities as $activity) {
-            $choices[$activity->getName()] = $activity->getId();
+        foreach ($activities as $project => $_activities) {
+            $subChoices = [];
+            foreach ($_activities as $activity) {
+                $subChoices[$activity->getName()] = $activity->getId();
+            }
+            $choices[$project] = $subChoices;
         }
 
         $buttonAttr = ['class' => 'btn-time'];

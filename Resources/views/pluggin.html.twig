@@ -7,23 +7,6 @@
     <script src="https://code.jquery.com/jquery-3.5.0.min.js" integrity="sha256-xNzN2a4ltkB44Mc/Jz3pT4iU1cmeR0FkXs4pru/JxaQ=" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.min.js" integrity="sha256-eGE6blurk5sHj+rmkfsGYeKyZx3M4bG+ZlFyA7Kns7E=" crossorigin="anonymous"></script>
     <script>
-         $(function() {
-            $( "#tabs" ).tabs();
-
-            $(".btn-time").on("click", function() {
-                var time = parseInt($("#form_duration").val() || 0);
-                time += parseInt($(this).data('time'));
-                if (time < 15) {
-                    time = 15;
-                }
-                $("#form_duration").val(time);
-            });
-
-            var searchParams = new URLSearchParams(window.location.search);
-            if (searchParams.has('show')) {
-                $(searchParams.get('show')).show();
-            }
-         });
     </script>
 
     <style>
@@ -57,6 +40,25 @@
          </div>
       </div>
 
+<script>
+$( document ).ready(function() {
+    $( "#tabs" ).tabs();
+
+    $(".btn-time").on("click", function() {
+        var time = parseInt($("#form_duration").val() || 0);
+        time += parseInt($(this).data('time'));
+        if (time < 15) {
+            time = 15;
+        }
+        $("#form_duration").val(time);
+    });
+
+    if ("{{  show  }}" == "tabs-2" ) {
+        $("#tabs-2").show();
+        $("#tabs-1").hide();
+    }
+});
+</script>
 </body>
 </html>
 

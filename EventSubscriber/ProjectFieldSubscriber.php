@@ -26,7 +26,7 @@ class ProjectFieldSubscriber implements EventSubscriberInterface
     private function prepareEntity(EntityWithMetaFields $entity, MetaTableTypeInterface $definition)
     {
         $definition
-            ->setName('External Board ID')
+            ->setName('External Board IDs (Comma sep.)')
             ->setType(TextType::class)
             ->addConstraint(new Length(['max' => 255]))
             ->setIsVisible(true);
