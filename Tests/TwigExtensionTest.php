@@ -1,6 +1,6 @@
 <?php
 
-namespace KimaiPlugin\ChromePluginBundle\Twig;
+namespace KimaiPlugin\ChromePluginBundle\Tests;
 
 use App\Configuration\LanguageFormattings;
 use App\Entity\Timesheet;
