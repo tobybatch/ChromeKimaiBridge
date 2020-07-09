@@ -26,6 +26,7 @@ use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormInterface;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -73,6 +74,18 @@ class ChromeController extends TimesheetAbstractController
         $this->activityRepository = $activityRepository;
         $this->repository = $repository;
         $this->timesheetService = $timesheetService;
+    }
+
+    /**
+     * @Route(path="status", name="chrome_status", methods={"GET"})
+     */
+    public function status() {
+        return new JsonResponse(
+            [
+                'name' => "Kimai chrome plugin",
+                'version' => "1.0.0",
+            ]
+        );
     }
 
     /**
@@ -132,11 +145,15 @@ class ChromeController extends TimesheetAbstractController
                 ->getRepository(TimesheetMeta::class)
                 ->findByValue($cardId);
             foreach ($timesheetMetas as $timesheet) {
-                $timesheets[$projects[0]->getName()] = $timesheet->getEntity();
+                $sheets = $timesheet->getEntity();
             }
+            usort($sheets, [$this, "compareSheetsByDate"]);
+            $timesheets[$projects[0]->getName()] = $sheets;
         } else {
             foreach ($projects as $project) {
-                $timesheets[$project->getName()] = $timesheetRepository->findBy(["project" => $project]);
+                $sheets = $timesheetRepository->findBy(["project" => $project]);
+                usort($sheets, [$this, "compareSheetsByDate"]);
+                $timesheets[$project->getName()] = $sheets;
             }
         }
 
@@ -150,6 +167,10 @@ class ChromeController extends TimesheetAbstractController
                 'show' => $show,
             ]
         );
+    }
+
+    private function compareSheetsByDate(Timesheet $sheet1, Timesheet $sheet2) {
+        return $sheet1->getBegin() > $sheet2->getBegin();
     }
 
     private function getProjectsById($projectId) {

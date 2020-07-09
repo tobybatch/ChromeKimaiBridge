@@ -8,11 +8,16 @@
   </script>
   <script type="module" src="../js/options.js">
   </script>
+  <style>
+    #status {
+      padding-bottom: 15px;
+    }
+  </style>
 </head>
 <body>
   <div class="d-flex justify-content-center">
   <div class="container">
-    <h1>Neontribe Timesheet Bridge Options</h1>
+    <h1>Kimai Timesheet Bridge Options</h1>
     <h3 id="message"></h3>
     <form>
       <div class="form-group">
@@ -21,7 +26,8 @@
         <small id="kimaiurlHelp" class="form-text text-muted">Enter the full URL to the front page of your kimai instance. e.g. https://kimai.neontribe.co.uk</small>
       </div>
       <div id="status"></div>
-        <button id="save" class="btn btn-primary">Save</button>
+      <button id="test" class="btn btn-primary">Test URL</button>
+      <button id="save" class="btn btn-primary">Save</button>
       </form>
     </div>
   </div>

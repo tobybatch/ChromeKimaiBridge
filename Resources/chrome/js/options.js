@@ -1,32 +1,10 @@
-// Saves options to chrome.storage
-
-function getUrlVars()
-{
-  var vars = [], hash;
-  var hashes = window.location.href.slice(window.location.href.indexOf('?') + 1).split('&');
-  for(var i = 0; i < hashes.length; i++)
-  {
-    hash = hashes[i].split('=');
-    vars.push(hash[0]);
-    vars[hash[0]] = hash[1];
-  }
-  return vars;
-}
-
-function kimaiUrlError(kiamiurl) {
-      $("#status").html("There is a problem with the Kimai URL.  Check it is a valid kimai instance.");
-      // $("#status").html("There is a problem with the Kimai URL.  Check this is a valid web page: <a href='" + kimaiurl + "'>" + kimaiurl + "</a>" );
-}
 
 $( document ).ready(function() {
 
   chrome.storage.sync.get({
     kimaiurl: ""
-  }, function(items) {
+  }, function (items) {
     $('#kimaiurl').val(items.kimaiurl);
-    if (items.kimaiurl.length > 0) {
-      $('#message').text("I can't reach your Kimai instance.  Make sure it is up and reachable (do you need to be on a VPN?)");
-    }
   });
 
   $("#save").on('click', function () {
@@ -40,28 +18,69 @@ $( document ).ready(function() {
       setTimeout(8000, window.close);
     });
 
-    // I know this is wrong.  Rob has told me but I can't remeber how to do it properley
+    // I know this is wrong.  Rob has told me but I can't remember how to do it properly
     return false;
   });
 
-  // Did we come here with an error?
-  var vars = getUrlVars();
-  if (vars.status != undefined) {
-    chrome.storage.sync.get({
-      kimaiurl: ""
-    }, function(items) {
-      kimaiUrlError(items.kimaiurl);
+  $("#test").on('click', function () {
+    var url = $('#kimaiurl').val().replace(/\/$/, "");
+    if (url.length == 0) {
+      $('#status').html("Please enter a URL to a Kimai server");
+      return false;
+    }
+    $('#status').html("Checking URL accessible...");
+    $.ajax({
+      url: url,
+      success: function(){
+        // It's a valid URL, check for a kimai manifest
+        $('#status').html("Checking for a kimai manifest...");
+        $.ajax({
+          url: url + "/manifest.json",
+          success: function(data){
+            if (data.name != "Kimai Time-Tracker") {
+              // That's not a kimai manifest!
+              $('#status').html(
+                  "Weird, there is a manifest file but it's not a Kimai manifest, " +
+                  "check that the URL does point to a Kimai install"
+              );
+            } else {
+              // It's a kimai, is the bundle installed
+              $('#status').html("Checking bundle...");
+              $.ajax({
+                url: url + "/chrome/status",
+                success: function(data){
+                  if (data.name == "Kimai chrome plugin") {
+                    $('#status').html("Looks good (version " + data.version + "), that value has been saved.");
+                    chrome.storage.sync.set({kimaiurl: url});
+                  } else {
+                    // Unreachable?
+                    $('#status').html("The bundle is installed but mis-configured, check installation of the bundle," +
+                        "see <a href='https://github.com/tobybatch/ChromeKimaiBridge'>here</a>.");
+                  }
+                },
+                error: function(){
+                  $('#status').html("Can't find the chrome plugin, you may need to install the kimai plugin." +
+                      "see <a href='https://github.com/tobybatch/ChromeKimaiBridge'>here</a>.");
+                },
+              });
+            }
+          },
+          error: function(){
+            $('#status').html("That does not look like a Kimai server, " +
+                "make sure the URL points to the root of Kimai site");
+          }
+        })
+      },
+      error: function(){
+        $('#status').html("That URL is inaccessible.");
+      },
     });
-  }
 
-  // Check the URL and redirect if the kimai can't be found.
-  chrome.storage.sync.get({
-    kimaiurl: ""
-  }, function(items) {
-    $.ajax(items.kimaiurl)
-      .fail(function(data) {
-        kimaiUrlError(items.kimaiurl);
-      })
+    return false;
   });
 
+  function testIsKimai(url) {}
+  function testHasBundle(url) {}
 })
+
+// http://localhost/workspace/kimai/kimai_trello_bundle

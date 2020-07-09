@@ -15,6 +15,10 @@ services:
         tags: ['controller.service_arguments']
         public: true
 
+    KimaiPlugin\ChromePluginBundle\Twig\:
+        resource: '../../Twig'
+        tags: ['twig.extension']
+
 #    KimaiPlugin\ChromePluginBundle\Service\:
 #        resource: '../../Service'
 #        public: true
