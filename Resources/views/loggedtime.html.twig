@@ -30,7 +30,7 @@
                 <div class="row">
                     <div class="col-xs-2 timesheet">
                         <a href="{{ path('timesheet_edit', { id: activity.id }, relative = false ) }}" target="_blank"><i class="fa fa-pencil-square-o" aria-hidden="true"></i></a>
-                        {{ activity.begin | date('Y-m-d') }}
+                        {{ activity.begin | date('y-m-d') }}
                     </div>
                     <div class="col-xs-1 timesheet">
                         {% set minutes = activity.duration / 60 %}
