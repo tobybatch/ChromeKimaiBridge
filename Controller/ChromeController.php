@@ -20,6 +20,7 @@ use RuntimeException;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
 use Symfony\Component\Form\Extension\Core\Type\ButtonType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
+use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
@@ -223,12 +224,12 @@ class ChromeController extends TimesheetAbstractController
             ->add('activity', ChoiceType::class, [ 'choices' => $choices ])
             ->add(
                 'startDateTime',
-                DateTimePickerType::class,
+                DateType::class,
                 [
                     'html5' => true,
                     'format' => 'yyyy-MM-dd',
                     'data' => new \DateTime(),
-                    'widget' => 'single_text',
+                    'widget' => "single_text",
                 ]
             )
             ->add('description', TextareaType::class, [ 'required' => false ])

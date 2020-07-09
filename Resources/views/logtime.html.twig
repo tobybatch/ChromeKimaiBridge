@@ -1,33 +1,45 @@
+
 {{ form_start(form) }}
 <div class="ChromePlugin-form-error">
     {{ form_errors(form) }}
 </div>
 
-<div class="row">
-    <div class="col">
-        {{ form_row(form.activity) }}
+<div class="container">
+    <div class="row">
+        <div class="col-xs-6">
+            {{ form_label(form.activity) }}
+            {{ form_widget(form.activity) }}
+        </div>
+        <div class="col-xs-6">
+            {{ form_label(form.startDateTime, "Date") }}
+            {{ form_widget(form.startDateTime) }}
+        </div>
     </div>
-</div>
-<div class="row">
-    <div class="col">
-        {{ form_row(form.startDateTime) }}
-    </div>
-</div>
-<div class="row">
-    Time quick select:<br>
-    {{ form_widget(form.dec15) }} 15m {{ form_widget(form.inc15) }}<br />
-    {{ form_widget(form.dec60) }} 60m {{ form_widget(form.inc60) }}<br />
-    Or enter time spent in minutes (e.g. 90):
-    {{ form_row(form.duration) }}
-</div>
-<div class="row">
-    <div class="col">
-        {{ form_row(form.description) }}
-    </div>
-</div>
-<div class="row">
-    <div class="col">
-        {{ form_row(form.send) }}
+    <div style="padding-left: 15px; padding-right: 15px;">
+        <div class="row">
+            {{ form_label(form.duration) }}
+        </div>
+        <div class="row">
+            <div class="col-xs-4">
+                {{ form_widget(form.dec15) }} 15m {{ form_widget(form.inc15) }}<br />
+            </div>
+            <div class="col-xs-4">
+                {{ form_widget(form.dec60) }} 60m {{ form_widget(form.inc60) }}<br />
+            </div>
+            <div class="col-xs-4">
+                {{ form_widget(form.duration) }}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                {{ form_row(form.description) }}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                {{ form_row(form.send) }}
+            </div>
+        </div>
     </div>
 </div>
 {{ form_end(form) }}

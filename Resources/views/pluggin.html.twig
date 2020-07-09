@@ -1,63 +1,45 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <title>Bootstrap Example</title>
     <meta charset="utf-8">
-    <!-- I'm guessing this use the webpack jquery that I guess symfony ships with -->
-    <link href = "https://code.jquery.com/ui/1.10.4/themes/ui-lightness/jquery-ui.css" rel = "stylesheet">
-    <script src="https://code.jquery.com/jquery-3.5.0.min.js" integrity="sha256-xNzN2a4ltkB44Mc/Jz3pT4iU1cmeR0FkXs4pru/JxaQ=" crossorigin="anonymous"></script>
-    <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.min.js" integrity="sha256-eGE6blurk5sHj+rmkfsGYeKyZx3M4bG+ZlFyA7Kns7E=" crossorigin="anonymous"></script>
-    <script>
-    </script>
-
-    <style>
-         #tabs-1 {
-             font-size: 14px;
-         }
-         .ui-widget-header {
-            background:#b9cd6d;
-            border: 1px solid #b9cd6d;
-            color: #FFFFFF;
-            font-weight: bold;
-         }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
 </head>
 <body>
 
-      <div id = "tabs">
-         <ul>
-            <li><a href = "#tabs-1">Log Time</a></li>
-            <li><a href = "#tabs-2">Time Logged</a></li>
-         </ul>
-         <div id = "tabs-1">
+<div class="container">
+    <ul class="nav nav-tabs">
+        <li class="active"><a data-toggle="tab" href="#logtime">Log Time</a></li>
+        <li><a data-toggle="tab" href="#history">History</a></li>
+    </ul>
+
+    <div class="tab-content">
+        <div id="logtime" class="tab-pane fade in active">
 
             {% include '@ChromePlugin/logtime.html.twig' %}
 
-         </div>
-         <div id = "tabs-2">
+        </div>
+        <div id="history" class="tab-pane fade">
 
             {% include '@ChromePlugin/loggedtime.html.twig' %}
 
-         </div>
-      </div>
-
+        </div>
+    </div>
+</div>
 <script>
-$( document ).ready(function() {
-    $( "#tabs" ).tabs();
-
-    $(".btn-time").on("click", function() {
-        var time = parseInt($("#form_duration").val() || 0);
-        time += parseInt($(this).data('time'));
-        if (time < 15) {
-            time = 15;
-        }
-        $("#form_duration").val(time);
+    $( document ).ready(function() {
+        $(".btn-time").on("click", function() {
+            var time = parseInt($("#form_duration").val() || 0);
+            time += parseInt($(this).data('time'));
+            if (time < 0) {
+                time = 0;
+            }
+            $("#form_duration").val(time);
+        });
     });
-
-    if ("{{  show  }}" == "tabs-2" ) {
-        $("#tabs-2").show();
-        $("#tabs-1").hide();
-    }
-});
 </script>
 </body>
 </html>
