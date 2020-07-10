@@ -19,7 +19,7 @@ Reload the plugins:
 
 ### The chrome extension
 
-Right now it's not in the chrome store, it will be, but for now there is a packed crx file in the var/plugins/ChromePluginBundle/Resources/ folder.
+Right now it's not in the chrome store, it will be, but for now there is a packed crx file in the var/plugins/ChromePluginBundle/Resources/ folder.  Because the extension needs to access your Kimai instance it has to have the ```hosts: https://*/*``` permissions which google (quite correctly) finds very permissive and this holds up getting it into the store.
 
 Get it [here](https://github.com/tobybatch/ChromeKimaiBridge/blob/master/Resources/chrome.crx).
 
