@@ -1,0 +1,85 @@
+{% extends 'base.html.twig' %}
+{% import "macros/widgets.html.twig" as widgets %}
+
+{% block page_title %}Chrome Plugin Settings{% endblock %}
+
+{% block main %}
+    <div class="box-body">
+        Listed here are the extra hosts to allow the pop up to trigger on and what reg ex should be used to extract
+        the board id and card id.
+    </div>
+
+    <div class="box-body">
+        The first column is the host to match, the second and third are reg exs. The first reg ex matches the
+        board or project ID, the second matches the card ID. If there the first expression returns more than one
+        match and the second regex is not set then the first match is used as the project ID and the second is used
+        as the card ID.
+    </div>
+
+    <div class="box-body">
+        e.g. For git hub, https://github.com/tobybatch/ChromeKimaiBridge/issues/9:
+
+        <ul>
+            <li>host = github.com</li>
+            <li>regex1 = (?<=^https:\/\/github.com\/)(\w+\/\w+)</li>
+            <li>regex2 = [0-9]+$</li>
+        </ul>
+
+        In this case on the host "https://github.com" the first reg ex returns "tobybatch/ChromeKimaiBridge", the
+        second reg ex returns "9" so the board id is "tobybatch/ChromeKimaiBridge" and the card id is 9
+    </div>
+
+    <div class="box-body">
+        e.g. For Next cloud deck, https://some.next.cloud/index.php/apps/deck/#/board/21/card/543
+
+        <ul>
+            <li>host = some.next.cloud</li>
+            <li>regex1 = [0-9]+</li>
+            <li>regex2 =</li>
+        </ul>
+
+        In this case on the host "https://some.next.cloud" the first reg ex returns 21 and 543, and the second reg
+        ex is empty so the board ID is 21 and the card ID is 543.
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>&nbsp;</th>
+                <th>host</th>
+                <th>Regex 1</th>
+                <th>Regex 1</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for form in forms %}
+                <tr>
+                    {{ form_start(form) }}
+                        <td>
+                            {% if form.hostname.vars.value != "" %}
+                                <a href="{{
+                                    path('chrome_settings',
+                                    {
+                                        host: form.hostname.vars.value
+                                    },
+                                    relative = false )
+                                }}"><i class="fas fa-trash-alt"></i></a>&nbsp;
+                            {% endif %}
+                        </td>
+                        <td>{{ form_widget(form.hostname) }}</td>
+                        <td>{{ form_widget(form.regex1) }}</td>
+                        <td>{{ form_widget(form.regex2) }}</td>
+                        <td>{{ form_widget(form.send) }}</td>
+                    {{ form_end(form) }}
+
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="box-body">
+        <h2>Trello</h2>
+        Trello is a special snowflake and messes with the URL when cards/boards are opened/closed.
+        The card and board detection is done in code.
+    </div>
+{% endblock %}

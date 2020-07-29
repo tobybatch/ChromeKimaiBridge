@@ -3,8 +3,8 @@ services:
         autowire: true
         autoconfigure: true
         public: false
-        #bind:
-        #    $dataDirectory: "%kimai.data_dir%"
+        bind:
+            $dataDirectory: "%kimai.data_dir%"
 
     KimaiPlugin\ChromePluginBundle\:
         resource: '../../*'
@@ -18,13 +18,3 @@ services:
     KimaiPlugin\ChromePluginBundle\Twig\:
         resource: '../../Twig'
         tags: ['twig.extension']
-
-#    KimaiPlugin\ChromePluginBundle\Service\:
-#        resource: '../../Service'
-#        public: true
-                
-#    KimaiPlugin\ChromePluginBundle\Repository\ExtProjectRepository:
-#        class:     Doctrine\ORM\EntityRepository
-#        factory:   ['@doctrine.orm.entity_manager', getRepository]
-#        arguments: ['KimaiPlugin\ChromeExtBundle\Entity\ExtProject']
-        

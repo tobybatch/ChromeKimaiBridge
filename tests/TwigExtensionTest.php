@@ -1,6 +1,7 @@
 <?php
+declare(strict_types=1);
 
-namespace KimaiPlugin\ChromePluginBundle\Tests;
+namespace KimaiPlugin\ChromePluginBundle\tests;
 
 use App\Configuration\LanguageFormattings;
 use App\Entity\Timesheet;

@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 namespace KimaiPlugin\ChromePluginBundle\Controller;
 
 use App\Controller\TimesheetAbstractController;
@@ -6,24 +8,29 @@ use App\Entity\Activity;
 use App\Entity\ProjectMeta;
 use App\Entity\Timesheet;
 use App\Entity\TimesheetMeta;
-use App\Form\Type\DateTimePickerType;
+use App\Export\ServiceExport;
 use App\Repository\ActivityRepository;
-use App\Repository\ProjectRepository;
 use App\Repository\TimesheetRepository;
 use App\Timesheet\TimesheetService;
+use App\Timesheet\TrackingModeService;
+use App\Timesheet\UserDateTimeFactory;
+use DateInterval;
+use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
 use KimaiPlugin\ChromePluginBundle\Exception\NoActivitiesException;
 use KimaiPlugin\ChromePluginBundle\Exception\ProjectNotFoundException;
-use KimaiPlugin\ChromePluginBundle\Service\ChromePluginService;
+use KimaiPlugin\ChromePluginBundle\Repository\ChromeSettingRepository;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Form\Extension\Core\Type\ButtonType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -34,7 +41,7 @@ use Symfony\Component\Routing\Annotation\Route;
 /**
  *
  * @Route(path="/chrome/")
- * @Security("is_granted('create_own_timesheet')")
+ * @Security("is_granted('system_configuration')")
  */
 class ChromeController extends TimesheetAbstractController
 {
@@ -53,37 +60,103 @@ class ChromeController extends TimesheetAbstractController
     /**
      * @var ActivityRepository
      */
-    private ActivityRepository $activityRepository;
+    private ActivityRepository $activityRepo;
 
     /**
+     * ChromeController constructor.
+     *
      * @param EntityManagerInterface $entityManager
      * @param LoggerInterface $logger
      * @param ActivityRepository $activityRepository
      * @param TimesheetRepository $repository
      * @param TimesheetService $timesheetService
+     * @param UserDateTimeFactory $dateTime
+     * @param TrackingModeService $trackingModeService
+     * @param EventDispatcherInterface $dispatcher
+     * @param ServiceExport $exportService
      */
     public function __construct(
         EntityManagerInterface $entityManager,
         LoggerInterface $logger,
         ActivityRepository $activityRepository,
         TimesheetRepository $repository,
-        TimesheetService $timesheetService
-    ) {
+        TimesheetService $timesheetService,
+        UserDateTimeFactory $dateTime,
+        TrackingModeService $trackingModeService,
+        EventDispatcherInterface $dispatcher,
+        ServiceExport $exportService
+    )
+    {
         $this->entityManager = $entityManager;
         $this->logger = $logger;
-        $this->activityRepository = $activityRepository;
+        $this->activityRepo = $activityRepository;
         $this->repository = $repository;
         $this->timesheetService = $timesheetService;
+        $this->dateTime = $dateTime;
+        $this->repository = $repository;
+        $this->trackingModeService = $trackingModeService;
+        $this->dispatcher = $dispatcher;
+        $this->exportService = $exportService;
     }
 
     /**
      * @Route(path="status", name="chrome_status", methods={"GET"})
      */
-    public function status() {
+    public function status()
+    {
         return new JsonResponse(
             [
                 'name' => "Kimai chrome plugin",
                 'version' => "1.0.0",
+            ]
+        );
+    }
+
+    /**
+     * @Route(path="uri", name="chrome_uri", methods={"GET", "POST"})
+     *
+     * Create the iframe for browser plugins..
+     *
+     * @param Request $request
+     * @param LoggerInterface $logger
+     * @param TimesheetRepository $timesheetRepository
+     * @param ChromeSettingRepository $chromeSettingRepo
+     * @return Response
+     */
+    public function popupWithUri(
+        Request $request,
+        LoggerInterface $logger,
+        TimesheetRepository $timesheetRepository,
+        ChromeSettingRepository $chromeSettingRepo)
+    {
+        // extract the board/card ids from the URI
+        $uri_from_plugin = $request->query->get('uri');
+        $logger->debug(sprintf("URI Received: %s", $uri_from_plugin));
+        $hostname = parse_url($uri_from_plugin, PHP_URL_HOST);
+        $all_settings = $chromeSettingRepo->findAll();
+        if (!array_key_exists($hostname, $all_settings)) {
+            throw $this->createNotFoundException('Host not configured in Kimai');
+        }
+        $settings = $all_settings[$hostname];
+        if (empty($settings['regex2'])) {
+            $matches = [];
+            preg_match("/" . $settings['regex1'] . "/", $uri_from_plugin, $matches);
+            $board_id = $matches[0] ?? false;
+            $card_id = $matches[1] ?? false;
+        } else {
+            $matches = [];
+            preg_match("/" . $settings['regex1'] . "/", $uri_from_plugin, $matches);
+            $board_id = $matches[0] ?? false;
+            $matches = [];
+            preg_match("/" . $settings['regex2'] . "/", $uri_from_plugin, $matches);
+            $card_id = $matches[0] ?? false;
+        }
+        // forward to the chrome_popup route.
+        $logger->debug(sprintf("Returning board id=%s, card id=%s", $board_id, $card_id));
+        return new JsonResponse(
+            [
+                'boardId' => $board_id,
+                'cardId' => $card_id,
             ]
         );
     }
@@ -96,17 +169,15 @@ class ChromeController extends TimesheetAbstractController
      * @param Request $request
      * @param LoggerInterface $logger
      * @param TimesheetRepository $timesheetRepository
-     * @param ProjectRepository $projectRepository
-     * @param $projectId
-     * @param $cardId
+     * @param string $projectId
+     * @param string|bool $cardId
      * @return Response
      */
-    public function pluginAction(
+    public function popupWithIds(
         Request $request,
         LoggerInterface $logger,
         TimesheetRepository $timesheetRepository,
-        ProjectRepository $projectRepository,
-        $projectId,
+        string $projectId,
         $cardId = false)
     {
         $logger->info("Project ID:" . $projectId);
@@ -121,19 +192,19 @@ class ChromeController extends TimesheetAbstractController
             );
         }
 
-        $logTimeForm = $this->buildLogForm(
+        $log_time_form = $this->buildLogForm(
             $this->createFormBuilder(/* Add hidden data here */),
             $activities
         );
 
-        $logTimeForm->handleRequest($request);
+        $log_time_form->handleRequest($request);
 
-        $show = false;
-        if ($logTimeForm->isSubmitted() && $logTimeForm->isValid()) {
-            $this->processForm($logTimeForm, $this->getUser(), $cardId);
+        $show_log = false;
+        if ($log_time_form->isSubmitted() && $log_time_form->isValid()) {
+            $this->processForm($log_time_form, $this->getUser(), $cardId);
             $this->container->get('router');
             $this->addFlash('success', 'Time logged!');
-            $show = 'tabs-2';
+            $show_log = 'tabs-2';
         }
 
         $projects = $this->getProjectsById($projectId);
@@ -141,11 +212,12 @@ class ChromeController extends TimesheetAbstractController
         // Logged time tab
         $timesheets = [];
         if ($cardId) {
-            $timesheetMetas = $this->getDoctrine()->getManager()
+            $timesheet_metas = $this->getDoctrine()->getManager()
                 ->getRepository(TimesheetMeta::class)
                 ->findByValue($cardId);
-            foreach ($timesheetMetas as $timesheet) {
-                $sheets = $timesheet->getEntity();
+            $sheets = [];
+            foreach ($timesheet_metas as $timesheet) {
+                $sheets[] = $timesheet->getEntity();
             }
             usort($sheets, [$this, "compareSheetsByDate"]);
             $timesheets[$projects[0]->getName()] = $sheets;
@@ -160,42 +232,21 @@ class ChromeController extends TimesheetAbstractController
         return $this->render(
             '@ChromePlugin/pluggin.html.twig',
             [
-                'form' => $logTimeForm->createView(),
+                'form' => $log_time_form->createView(),
                 'timesheets' => $timesheets,
                 'boardId' => $projectId,
                 'cardId' => $cardId,
-                'show' => $show,
+                'show_log' => $show_log,
             ]
         );
-    }
-
-    private function compareSheetsByDate(Timesheet $sheet1, Timesheet $sheet2) {
-        return $sheet1->getBegin() > $sheet2->getBegin();
-    }
-
-    private function getProjectsById($projectId) {
-        $builder = $this->entityManager->getRepository(ProjectMeta::class)->createQueryBuilder('p');
-        $query = $builder->where($builder->expr()->like('p.value', ':projectid'))
-            ->setParameter('projectid', '%' . $projectId . '%')
-            ->getQuery();
-        $projectMetas = $query->getResult();
-        if (!count($projectMetas)) {
-            return [];
-        }
-        else {
-            $projects = [];
-            foreach ($projectMetas as $projectMeta) {
-                $projects[] = $projectMeta->getEntity();
-            }
-        }
-        return $projects;
     }
 
     /**
      * @param $projectId
      * @return array
      */
-    private function getActivities($projectId) {
+    private function getActivities($projectId)
+    {
         $projects = $this->getProjectsById($projectId);
         if (count($projects) == 0) {
             throw new ProjectNotFoundException("Could not find valid project meta data");
@@ -203,18 +254,18 @@ class ChromeController extends TimesheetAbstractController
 
         $activities = [];
         foreach ($projects as $project) {
-            $projectActivities = $this->activityRepository->findByProject($project);
-            if (count($projectActivities)) {
-                $activities[$project->getName()] = $projectActivities;
+            $proj_activities = $this->activityRepo->findByProject($project);
+            if (count($proj_activities)) {
+                $activities[$project->getName()] = $proj_activities;
             }
         }
 
         $builder = $this->entityManager->getRepository(Activity::class)->createQueryBuilder('a');
         $query = $builder->where('a.project IS NULL')->getQuery();
-        $globalActivities = $query->getResult();
-        if (count($globalActivities)) {
-            $activities["__GLOBAL"] = $globalActivities;
-        };
+        $global_act = $query->getResult();
+        if (count($global_act)) {
+            $activities["__GLOBAL"] = $global_act;
+        }
 
         if (empty($activities)) {
             throw new NoActivitiesException('Could not find valid activity meta data');
@@ -224,75 +275,224 @@ class ChromeController extends TimesheetAbstractController
     }
 
     /**
-     * @param FormBuilderInterface $formbuilder
+     * @param $projectId
+     * @return array
+     */
+    private function getProjectsById($projectId)
+    {
+        $builder = $this->entityManager->getRepository(ProjectMeta::class)->createQueryBuilder('p');
+        $query = $builder->where($builder->expr()->like('p.value', ':projectid'))
+            ->setParameter('projectid', '%' . $projectId . '%')
+            ->getQuery();
+        $project_metas = $query->getResult();
+        if (!count($project_metas)) {
+            return [];
+        } else {
+            $projects = [];
+            foreach ($project_metas as $project_meta) {
+                $projects[] = $project_meta->getEntity();
+            }
+        }
+        return $projects;
+    }
+
+    /**
+     * @param FormBuilderInterface $form_builder
      * @param Activity[] $activities
      * @return FormInterface
      */
-    private function buildLogForm(FormBuilderInterface $formbuilder, array $activities) {
+    private function buildLogForm(FormBuilderInterface $form_builder, array $activities)
+    {
         $choices = [];
 
-        foreach ($activities as $project => $_activities) {
-            $subChoices = [];
-            foreach ($_activities as $activity) {
-                $subChoices[$activity->getName()] = $activity->getId();
+        foreach ($activities as $project => $proj_activities) {
+            $sub_choices = [];
+            foreach ($proj_activities as $activity) {
+                $sub_choices[$activity->getName()] = $activity->getId();
             }
-            $choices[$project] = $subChoices;
+            $choices[$project] = $sub_choices;
         }
 
-        $buttonAttr = ['class' => 'btn-time'];
+        $button_attr = ['class' => 'btn-time'];
 
-        return $formbuilder
-            ->add('activity', ChoiceType::class, [ 'choices' => $choices ])
+        return $form_builder
+            ->add('activity', ChoiceType::class, ['choices' => $choices])
             ->add(
                 'startDateTime',
                 DateType::class,
                 [
                     'html5' => true,
                     'format' => 'yyyy-MM-dd',
-                    'data' => new \DateTime(),
+                    'data' => new DateTime(),
                     'widget' => "single_text",
                 ]
             )
-            ->add('description', TextareaType::class, [ 'required' => false ])
+            ->add('description', TextareaType::class, ['required' => false])
             ->add('duration', NumberType::class)
             ->add('inc15', ButtonType::class, [
-                'label' => '+', 'attr' => array_merge( $buttonAttr, [ 'data-time' => '15'])
+                'label' => '+', 'attr' => array_merge($button_attr, ['data-time' => '15'])
             ])
             ->add('dec15', ButtonType::class, [
-                'label' => '-', 'attr' => array_merge( $buttonAttr, [ 'data-time' => '-15'])
+                'label' => '-', 'attr' => array_merge($button_attr, ['data-time' => '-15'])
             ])
             ->add('inc60', ButtonType::class, [
-                'label' => '+', 'attr' => array_merge( $buttonAttr, [ 'data-time' => '60'])
+                'label' => '+', 'attr' => array_merge($button_attr, ['data-time' => '60'])
             ])
             ->add('dec60', ButtonType::class, [
-                'label' => '-', 'attr' => array_merge( $buttonAttr, [ 'data-time' => '-60'])
+                'label' => '-', 'attr' => array_merge($button_attr, ['data-time' => '-60'])
             ])
             ->add('send', SubmitType::class)
             ->getForm();
     }
 
-    private function processForm($form, $user, $cardId) {
+    /**
+     * @param $form
+     * @param $user
+     * @param $cardId
+     */
+    private function processForm($form, $user, $cardId)
+    {
         // data is an array with "name", "email", and "message" keys
-        $data = $form->getData();
-        $activity = $this->activityRepository->find($data['activity']);
-        $begin = $data['startDateTime'];
-        $duration = \DateInterval::createFromDateString(round($data['duration']) . ' minutes');
-        $end = clone $begin;
-        $end->add($duration);
+        $form_data = $form->getData();
+        $activity = $this->activityRepo->find($form_data['activity']);
+        $start_time = $form_data['startDateTime'];
+        $duration = DateInterval::createFromDateString(round($form_data['duration']) . ' minutes');
+        $end_time = clone $start_time;
+        $end_time->add($duration);
         $timesheet = new Timesheet();
         $timesheet->setActivity($activity);
-        $timesheet->setBegin($begin);
-        $timesheet->setEnd($end);
-        $timesheet->setDescription($data['description']);
+        $timesheet->setBegin($start_time);
+        $timesheet->setEnd($end_time);
+        $timesheet->setDescription($form_data['description']);
         $timesheet->setProject($activity->getProject());
         $timesheet->setUser($user);
 
         if ($cardId) {
-            $cardIdMeta = (new TimesheetMeta())->setName('ChromePlugin Card ID')->setValue($cardId);
-            $timesheet->setMetaField($cardIdMeta);
+            $card_id_meta = (new TimesheetMeta())->setName('ChromePlugin Card ID')->setValue($cardId);
+            $timesheet->setMetaField($card_id_meta);
         }
 
         $this->entityManager->persist($timesheet);
         $this->entityManager->flush();
+    }
+
+    /**
+     * @Route(path="settings", name="chrome_settings", methods={"GET", "POST"})
+     *
+     * @param ChromeSettingRepository $chromeSettingRepository
+     * @param Request $request
+     * @return Response
+     */
+    public function settings(ChromeSettingRepository $chromeSettingRepository, Request $request)
+    {
+        $form_builder = $this->createFormBuilder();
+        $forms = [];
+
+        // Process a delete, if present
+        $hostname = $request->query->get('hostname');
+        if ($hostname) {
+            $chromeSettingRepository->remove($hostname);
+        }
+
+        // Create the empty add form
+        $empty_form = $form_builder
+            ->add('hostname', TextType::class)
+            ->add('regex1', TextType::class)
+            ->add('regex2', TextType::class, [
+                    'required' => false]
+            )
+            ->add('send', SubmitType::class, [
+                'label' => "Add"
+            ])
+            ->getForm();
+
+        $empty_form->handleRequest($request);
+        if ($empty_form->isSubmitted() && $empty_form->isValid()) {
+            $settings = $this->processEditForm($empty_form);
+            $hostname = array_key_first($settings);
+            $chromeSettingRepository->save($hostname, $settings[$hostname]);
+            // By redirecting post save we get a clear add form
+            return $this->redirect($request->getUri());
+        }
+        //Don't add the form view yet, we'll add it last so it's at the end of the list.
+
+        //Load the settings
+        $settings = $chromeSettingRepository->findAll();
+        if (count($settings) == 0) {
+            // If it's empty add github
+            $settings = [
+                "github.com" => [
+                    "regex1" => "(?<=^https:\/\/github.com\/)(\w+\/\w+)",
+                    "regex2" => "\d+$",
+                ]
+            ];
+            $chromeSettingRepository->saveAll($settings);
+        }
+
+        // Create edit forms for the existing settings
+        foreach ($settings as $hostname => $setting) {
+            $forms[] = $form_builder
+                ->add('hostname', TextType::class, [
+                    'data' => $hostname,
+                ])
+                ->add('regex1', TextType::class, [
+                    'data' => $setting['regex1'],
+                ])
+                ->add('regex2', TextType::class, [
+                        'data' => $setting['regex2'] ?? "",
+                        'required' => false]
+                )
+                ->add('send', SubmitType::class, [
+                    'label' => "Update"
+                ])
+                ->getForm();
+        }
+
+
+        $form_views = [];
+        foreach ($forms as $form) {
+            $form_views[] = $form->createView();
+            $form->handleRequest($request);
+            if ($form->isSubmitted() && $form->isValid()) {
+                $settings = $settings + $this->processEditForm($form);
+            }
+        }
+        $chromeSettingRepository->saveAll($settings);
+
+        // Add the empty (add) form at the end
+        $form_views[] = $empty_form->createView();
+
+        return $this->render(
+            '@ChromePlugin/settings.html.twig',
+            [
+                'forms' => $form_views,
+            ]
+        );
+    }
+
+    private function processEditForm($form)
+    {
+        $form_data = $form->getData();
+        $hostname = $form_data['hostname'];
+        $regex1 = $form_data['regex1'];
+        $regex2 = $form_data['regex2'];
+        return [
+            $hostname => [
+                'regex1' => $regex1,
+                'regex2' => $regex2,
+
+            ]
+        ];
+    }
+
+    /**
+     * @param Timesheet $sheet1
+     * @param Timesheet $sheet2
+     * @return bool
+     * @noinspection PhpMethodNamingConventionInspection
+     */
+    protected function compareSheetsByDate(Timesheet $sheet1, Timesheet $sheet2): bool
+    {
+        return $sheet1->getBegin() > $sheet2->getBegin();
     }
 }
