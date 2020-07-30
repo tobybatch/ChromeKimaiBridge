@@ -42,6 +42,7 @@ class ChromeControllerTest extends WebTestCase
         $client->request("GET", "/chrome/status");
         /** @var RedirectResponse $response */
         $response = $client->getResponse();
+        echo $response->getContent();
         self::assertInstanceOf(Response::class, $response);
         self::assertEquals(200, $response->getStatusCode());
 

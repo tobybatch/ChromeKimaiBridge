@@ -5,11 +5,13 @@ namespace KimaiPlugin\ChromePluginBundle\Controller;
 
 use App\Controller\TimesheetAbstractController;
 use App\Entity\Activity;
+use App\Entity\Project;
 use App\Entity\ProjectMeta;
 use App\Entity\Timesheet;
 use App\Entity\TimesheetMeta;
 use App\Export\ServiceExport;
 use App\Repository\ActivityRepository;
+use App\Repository\ProjectRepository;
 use App\Repository\TimesheetRepository;
 use App\Timesheet\TimesheetService;
 use App\Timesheet\TrackingModeService;
@@ -17,6 +19,7 @@ use App\Timesheet\UserDateTimeFactory;
 use DateInterval;
 use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
+use KimaiPlugin\ChromePluginBundle\EventSubscriber\ProjectFieldSubscriber;
 use KimaiPlugin\ChromePluginBundle\Exception\NoActivitiesException;
 use KimaiPlugin\ChromePluginBundle\Exception\ProjectNotFoundException;
 use KimaiPlugin\ChromePluginBundle\Repository\ChromeSettingRepository;
@@ -34,6 +37,7 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -41,7 +45,7 @@ use Symfony\Component\Routing\Annotation\Route;
 /**
  *
  * @Route(path="/chrome/")
- * @Security("is_granted('system_configuration')")
+ * @Security("is_granted('create_own_timesheet')")
  */
 class ChromeController extends TimesheetAbstractController
 {
@@ -168,7 +172,7 @@ class ChromeController extends TimesheetAbstractController
      *
      * @param Request $request
      * @param LoggerInterface $logger
-     * @param TimesheetRepository $timesheetRepository
+     * @param TimesheetRepository $timesheetRepo
      * @param string $projectId
      * @param string|bool $cardId
      * @return Response
@@ -176,7 +180,7 @@ class ChromeController extends TimesheetAbstractController
     public function popupWithIds(
         Request $request,
         LoggerInterface $logger,
-        TimesheetRepository $timesheetRepository,
+        TimesheetRepository $timesheetRepo,
         string $projectId,
         $cardId = false)
     {
@@ -186,10 +190,10 @@ class ChromeController extends TimesheetAbstractController
             $activities = $this->getActivities($projectId);
         } catch (RuntimeException $exception) {
             $logger->error($exception->getMessage());
-            return $this->render(
-                '@ChromePlugin/logtime_boardnotfound.html.twig',
-                ['projectId' => $projectId, 'cardId' => $cardId, 'message' => $exception->getMessage()]
-            );
+            return $this->redirectToRoute('chrome_project', [
+                "projectId" => $projectId,
+                "cardId" => $cardId ?? "false",
+            ]);
         }
 
         $log_time_form = $this->buildLogForm(
@@ -223,14 +227,14 @@ class ChromeController extends TimesheetAbstractController
             $timesheets[$projects[0]->getName()] = $sheets;
         } else {
             foreach ($projects as $project) {
-                $sheets = $timesheetRepository->findBy(["project" => $project]);
+                $sheets = $timesheetRepo->findBy(["project" => $project]);
                 usort($sheets, [$this, "compareSheetsByDate"]);
                 $timesheets[$project->getName()] = $sheets;
             }
         }
 
         return $this->render(
-            '@ChromePlugin/pluggin.html.twig',
+            '@ChromePlugin/pages/pluggin.html.twig',
             [
                 'form' => $log_time_form->createView(),
                 'timesheets' => $timesheets,
@@ -264,7 +268,7 @@ class ChromeController extends TimesheetAbstractController
         $query = $builder->where('a.project IS NULL')->getQuery();
         $global_act = $query->getResult();
         if (count($global_act)) {
-            $activities["__GLOBAL"] = $global_act;
+            $activities["Global"] = $global_act;
         }
 
         if (empty($activities)) {
@@ -463,7 +467,7 @@ class ChromeController extends TimesheetAbstractController
         $form_views[] = $empty_form->createView();
 
         return $this->render(
-            '@ChromePlugin/settings.html.twig',
+            '@ChromePlugin/admin/settings.html.twig',
             [
                 'forms' => $form_views,
             ]
@@ -483,6 +487,76 @@ class ChromeController extends TimesheetAbstractController
 
             ]
         ];
+    }
+
+    /**
+     * @Route(path="project/{projectId}/{cardId}", name="chrome_project", methods={"GET", "POST"})
+     *
+     * @param Request $request
+     * @param EntityManagerInterface $entityManager
+     * @param ProjectRepository $projectRepo
+     * @param string $projectId
+     * @param string $cardId
+     * @return Response
+     */
+    public function setProjectAssociation(
+        Request $request,
+        EntityManagerInterface $entityManager,
+        ProjectRepository $projectRepo,
+        string $projectId,
+        string $cardId = "")
+    {
+        if (empty($cardId)) {
+            $cardId = false;
+        }
+        $all_projects = $projectRepo->findAll();
+        $projects = [];
+        foreach ($all_projects as $project) {
+            $customer = $project->getCustomer()->getName();
+            if (array_key_exists($customer, $projects)) {
+                $projects[$project->getCustomer()->getName()] += [$project->getName() => $project->getId()];
+            } else {
+                $projects[$project->getCustomer()->getName()] = [$project->getName() => $project->getId()];
+            }
+        }
+        $project_form = $this->createFormBuilder()
+            ->add('projects', ChoiceType::class, ['choices' => $projects])
+            ->add('save', SubmitType::class, ['label' => "Save"])
+            ->getForm();
+
+        $project_form->handleRequest($request);
+        if ($project_form->isSubmitted() && $project_form->isValid()) {
+            $data = $project_form->getData();
+            /**
+             * @var Project
+             */
+            $project_to_update = $entityManager
+                ->getRepository(Project::class)
+                ->findOneById($data["projects"]);
+            $existing_id_meta = $project_to_update->getMetaField(ProjectFieldSubscriber::NAME);
+            if (!$existing_id_meta) {
+                $existing_id_meta = (new ProjectMeta())->setName(ProjectFieldSubscriber::NAME);
+                $existing_id_list = [];
+            } else {
+                $existing_id_list = $existing_id_meta ? explode(",", $existing_id_meta->getValue()) : [];
+            }
+            $existing_id_list[] = $projectId;
+
+            $existing_id_meta->setValue(implode(",",$existing_id_list));
+            $project_to_update->setMetaField($existing_id_meta);
+            $entityManager->persist($project_to_update);
+            $entityManager->flush();
+            return $this->redirectToRoute('chrome_popup', ["projectId" => $projectId, "cardId" => $cardId]);
+        }
+
+        return $this->render(
+            '@ChromePlugin/admin/project.html.twig',
+            [
+                'projectId' => $projectId,
+                'cardId' => $cardId,
+                'projects' => $project_form->createView(),
+            ]
+        );
     }
 
     /**

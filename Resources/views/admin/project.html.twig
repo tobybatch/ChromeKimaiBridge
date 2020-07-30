@@ -1,0 +1,19 @@
+{% extends '@ChromePlugin/base.html.twig' %}
+
+{% block content %}
+    <h2>Board not found</h2>
+    <div>
+    I couldn't find a project associated with the board {{ projectId }}.  Choose the board we should be logging to.
+    </div>
+
+    {% if is_granted('ROLE_ADMIN') %}
+        <div>
+            {{ form_start(projects) }}
+            {{ form_widget(projects) }}
+            {{ form_end(projects) }}
+        </div>
+    {% else %}
+        You don't have the permissions to set the board association. Ask someone with an administrator role to set the
+        association <a href="{{ path('admin_project', {}, relative = false ) }}" target="_blank">here</a>.
+    {% endif %}
+{% endblock %}

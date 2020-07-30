@@ -1,0 +1,47 @@
+{% extends '@ChromePlugin/base.html.twig' %}
+
+{% block stylesheets %}
+    <style>
+        .timesheet {
+            font-size: 10px;
+        }
+
+        .header {
+            font-weight: bold;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <ul class="nav nav-tabs">
+        <li class="active"><a data-toggle="tab" href="#logtime">Log Time</a></li>
+        <li><a data-toggle="tab" href="#history">History</a></li>
+    </ul>
+
+    <div class="tab-content">
+        <div id="logtime" class="tab-pane fade in active">
+
+            {% include '@ChromePlugin/pages/logtime.html.twig' %}
+
+        </div>
+        <div id="history" class="tab-pane fade">
+
+            {% include '@ChromePlugin/pages/loggedtime.html.twig' %}
+
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block javascript %}
+$(document).ready(function () {
+    $(".btn-time").on("click", function () {
+        var time = parseInt($("#form_duration").val() || 0);
+        time += parseInt($(this).data('time'));
+        if (time < 0) {
+            time = 0;
+        }
+        $("#form_duration").val(time);
+    });
+});
+{% endblock %}
