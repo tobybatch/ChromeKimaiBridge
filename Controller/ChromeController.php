@@ -19,10 +19,12 @@ use App\Timesheet\UserDateTimeFactory;
 use DateInterval;
 use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
+use KimaiPlugin\ChromePluginBundle\Entity\SettingEntity;
 use KimaiPlugin\ChromePluginBundle\EventSubscriber\ProjectFieldSubscriber;
+use KimaiPlugin\ChromePluginBundle\EventSubscriber\TimesheetFieldSubscriber;
 use KimaiPlugin\ChromePluginBundle\Exception\NoActivitiesException;
 use KimaiPlugin\ChromePluginBundle\Exception\ProjectNotFoundException;
-use KimaiPlugin\ChromePluginBundle\Repository\ChromeSettingRepository;
+use KimaiPlugin\ChromePluginBundle\Repository\SettingRepo;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
@@ -124,35 +126,31 @@ class ChromeController extends TimesheetAbstractController
      * @param Request $request
      * @param LoggerInterface $logger
      * @param TimesheetRepository $timesheetRepository
-     * @param ChromeSettingRepository $chromeSettingRepo
+     * @param SettingRepo $chromeSettingRepo
      * @return Response
      */
     public function popupWithUri(
         Request $request,
         LoggerInterface $logger,
         TimesheetRepository $timesheetRepository,
-        ChromeSettingRepository $chromeSettingRepo)
+        SettingRepo $chromeSettingRepo)
     {
         // extract the board/card ids from the URI
         $uri_from_plugin = $request->query->get('uri');
         $logger->debug(sprintf("URI Received: %s", $uri_from_plugin));
         $hostname = parse_url($uri_from_plugin, PHP_URL_HOST);
-        $all_settings = $chromeSettingRepo->findAll();
-        if (!array_key_exists($hostname, $all_settings)) {
-            throw $this->createNotFoundException('Host not configured in Kimai');
-        }
-        $settings = $all_settings[$hostname];
-        if (empty($settings['regex2'])) {
+        $setting = $chromeSettingRepo->findByHostname($hostname);
+        if (empty($setting->getRegex2())) {
             $matches = [];
-            preg_match("/" . $settings['regex1'] . "/", $uri_from_plugin, $matches);
+            preg_match("/" . $setting->getRegex1() . "/", $uri_from_plugin, $matches);
             $board_id = $matches[0] ?? false;
             $card_id = $matches[1] ?? false;
         } else {
             $matches = [];
-            preg_match("/" . $settings['regex1'] . "/", $uri_from_plugin, $matches);
+            preg_match("/" . $setting->getRegex1() . "/", $uri_from_plugin, $matches);
             $board_id = $matches[0] ?? false;
             $matches = [];
-            preg_match("/" . $settings['regex2'] . "/", $uri_from_plugin, $matches);
+            preg_match("/" . $setting->getRegex2() . "/", $uri_from_plugin, $matches);
             $card_id = $matches[0] ?? false;
         }
         // forward to the chrome_popup route.
@@ -205,8 +203,27 @@ class ChromeController extends TimesheetAbstractController
 
         $show_log = false;
         if ($log_time_form->isSubmitted() && $log_time_form->isValid()) {
-            $this->processForm($log_time_form, $this->getUser(), $cardId);
-            $this->container->get('router');
+            $form_data = $log_time_form->getData();
+            $activity = $this->activityRepo->find($form_data['activity']);
+            $start_time = $form_data['startDateTime'];
+            $duration = DateInterval::createFromDateString(round($form_data['duration']) . ' minutes');
+            $end_time = clone $start_time;
+            $end_time->add($duration);
+            $timesheet = new Timesheet();
+            $timesheet->setActivity($activity);
+            $timesheet->setBegin($start_time);
+            $timesheet->setEnd($end_time);
+            $timesheet->setDescription($form_data['description']);
+            $timesheet->setProject($activity->getProject());
+            $timesheet->setUser($this->getUser());
+
+            if ($cardId) {
+                $card_id_meta = (new TimesheetMeta())->setName(TimesheetFieldSubscriber::META_NAME)->setValue($cardId);
+                $timesheet->setMetaField($card_id_meta);
+            }
+            $this->entityManager->persist($timesheet);
+            $this->entityManager->flush();
+
             $this->addFlash('success', 'Time logged!');
             $show_log = 'tabs-2';
         }
@@ -350,44 +367,14 @@ class ChromeController extends TimesheetAbstractController
     }
 
     /**
-     * @param $form
-     * @param $user
-     * @param $cardId
-     */
-    private function processForm($form, $user, $cardId)
-    {
-        // data is an array with "name", "email", and "message" keys
-        $form_data = $form->getData();
-        $activity = $this->activityRepo->find($form_data['activity']);
-        $start_time = $form_data['startDateTime'];
-        $duration = DateInterval::createFromDateString(round($form_data['duration']) . ' minutes');
-        $end_time = clone $start_time;
-        $end_time->add($duration);
-        $timesheet = new Timesheet();
-        $timesheet->setActivity($activity);
-        $timesheet->setBegin($start_time);
-        $timesheet->setEnd($end_time);
-        $timesheet->setDescription($form_data['description']);
-        $timesheet->setProject($activity->getProject());
-        $timesheet->setUser($user);
-
-        if ($cardId) {
-            $card_id_meta = (new TimesheetMeta())->setName('ChromePlugin Card ID')->setValue($cardId);
-            $timesheet->setMetaField($card_id_meta);
-        }
-
-        $this->entityManager->persist($timesheet);
-        $this->entityManager->flush();
-    }
-
-    /**
      * @Route(path="settings", name="chrome_settings", methods={"GET", "POST"})
+     * @Security("is_granted('system_configuration')")
      *
-     * @param ChromeSettingRepository $chromeSettingRepository
+     * @param SettingRepo $chromeSettingRepository
      * @param Request $request
      * @return Response
      */
-    public function settings(ChromeSettingRepository $chromeSettingRepository, Request $request)
+    public function settings(SettingRepo $chromeSettingRepository, Request $request)
     {
         $form_builder = $this->createFormBuilder();
         $forms = [];
@@ -395,7 +382,7 @@ class ChromeController extends TimesheetAbstractController
         // Process a delete, if present
         $hostname = $request->query->get('hostname');
         if ($hostname) {
-            $chromeSettingRepository->remove($hostname);
+            $chromeSettingRepository->removeByHost($hostname, PHP_URL_HOST);
         }
 
         // Create the empty add form
@@ -412,9 +399,8 @@ class ChromeController extends TimesheetAbstractController
 
         $empty_form->handleRequest($request);
         if ($empty_form->isSubmitted() && $empty_form->isValid()) {
-            $settings = $this->processEditForm($empty_form);
-            $hostname = array_key_first($settings);
-            $chromeSettingRepository->save($hostname, $settings[$hostname]);
+            $setting = self::processEditForm($empty_form->getData());
+            $chromeSettingRepository->save($setting);
             // By redirecting post save we get a clear add form
             return $this->redirect($request->getUri());
         }
@@ -422,28 +408,18 @@ class ChromeController extends TimesheetAbstractController
 
         //Load the settings
         $settings = $chromeSettingRepository->findAll();
-        if (count($settings) == 0) {
-            // If it's empty add github
-            $settings = [
-                "github.com" => [
-                    "regex1" => "(?<=^https:\/\/github.com\/)(\w+\/\w+)",
-                    "regex2" => "\d+$",
-                ]
-            ];
-            $chromeSettingRepository->saveAll($settings);
-        }
 
         // Create edit forms for the existing settings
-        foreach ($settings as $hostname => $setting) {
+        foreach ($settings as $setting) {
             $forms[] = $form_builder
                 ->add('hostname', TextType::class, [
-                    'data' => $hostname,
+                    'data' => $setting->getHostname(),
                 ])
                 ->add('regex1', TextType::class, [
-                    'data' => $setting['regex1'],
+                    'data' => $setting->getRegex1(),
                 ])
                 ->add('regex2', TextType::class, [
-                        'data' => $setting['regex2'] ?? "",
+                        'data' => $setting->getRegex2() ?? "",
                         'required' => false]
                 )
                 ->add('send', SubmitType::class, [
@@ -458,7 +434,7 @@ class ChromeController extends TimesheetAbstractController
             $form_views[] = $form->createView();
             $form->handleRequest($request);
             if ($form->isSubmitted() && $form->isValid()) {
-                $settings = $settings + $this->processEditForm($form);
+                $settings = $settings + self::processEditForm($form->getData());
             }
         }
         $chromeSettingRepository->saveAll($settings);
@@ -474,19 +450,17 @@ class ChromeController extends TimesheetAbstractController
         );
     }
 
-    private function processEditForm($form)
+    /**
+     * @param $form_data
+     * @return SettingEntity
+     */
+    public static function processEditForm($form_data)
     {
-        $form_data = $form->getData();
-        $hostname = $form_data['hostname'];
-        $regex1 = $form_data['regex1'];
-        $regex2 = $form_data['regex2'];
-        return [
-            $hostname => [
-                'regex1' => $regex1,
-                'regex2' => $regex2,
-
-            ]
-        ];
+        $chrome_setting = new SettingEntity();
+        $chrome_setting->setHostname($form_data['hostname']);
+        $chrome_setting->setRegex1($form_data['regex1']);
+        $chrome_setting->setRegex2($form_data['regex2']);
+        return $chrome_setting;
     }
 
     /**
@@ -533,12 +507,12 @@ class ChromeController extends TimesheetAbstractController
             $project_to_update = $entityManager
                 ->getRepository(Project::class)
                 ->findOneById($data["projects"]);
-            $existing_id_meta = $project_to_update->getMetaField(ProjectFieldSubscriber::NAME);
+            $existing_id_meta = $project_to_update->getMetaField(ProjectFieldSubscriber::META_NAME);
             if (!$existing_id_meta) {
-                $existing_id_meta = (new ProjectMeta())->setName(ProjectFieldSubscriber::NAME);
+                $existing_id_meta = (new ProjectMeta())->setName(ProjectFieldSubscriber::META_NAME);
                 $existing_id_list = [];
             } else {
-                $existing_id_list = $existing_id_meta ? explode(",", $existing_id_meta->getValue()) : [];
+                $existing_id_list = explode(",", $existing_id_meta->getValue());
             }
             $existing_id_list[] = $projectId;
 

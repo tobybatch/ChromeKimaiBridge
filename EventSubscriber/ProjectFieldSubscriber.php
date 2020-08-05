@@ -13,7 +13,7 @@ use Symfony\Component\Validator\Constraints\Length;
 
 class ProjectFieldSubscriber implements EventSubscriberInterface
 {
-    const NAME = 'External Board IDs (Comma sep.)';
+    const META_NAME = 'External Board IDs (Comma sep.)';
 
     public static function getSubscribedEvents(): array
     {
@@ -30,7 +30,7 @@ class ProjectFieldSubscriber implements EventSubscriberInterface
     private function prepareEntity(EntityWithMetaFields $entity, MetaTableTypeInterface $definition)
     {
         $definition
-            ->setName(self::NAME)
+            ->setName(self::META_NAME)
             ->setType(TextType::class)
             ->addConstraint(new Length(['max' => 255]))
             ->setIsVisible(true);

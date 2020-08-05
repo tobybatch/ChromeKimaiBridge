@@ -3,36 +3,27 @@ declare(strict_types=1);
 
 namespace KimaiPlugin\ChromePluginBundle\tests;
 
-use App\Configuration\LanguageFormattings;
-use App\Entity\Timesheet;
-use App\Entity\User;
-use App\Twig\Extensions;
-use App\Utils\LocaleSettings;
+use KimaiPlugin\ChromePluginBundle\Twig\TwigExtension;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\RequestStack;
-use Symfony\Component\Intl\Util\IntlTestHelper;
-use Twig\TwigFilter;
-use Twig\TwigFunction;
 
 class TwigExtensionTest extends TestCase
 {
 
     public function testGetFilters()
     {
-        $twigExtension = new TwigExtension();
-        $filters = $twigExtension->getFilters();
-        $this->assertEquals(1, count($filters));
-        $this->assertEquals("hoursAndMinutes", $filters[0]->getName());
+        $twig_extension = new TwigExtension();
+        $filters = $twig_extension->getFilters();
+        static::assertEquals(1, count($filters));
+        static::assertEquals("hoursAndMinutes", $filters[0]->getName());
     }
 
-    function testHoursAndMinutes() {
-        $twigExtension = new TwigExtension();
-        $this->assertEquals('0m', $twigExtension->hoursAndMinutes(0));
-        $this->assertEquals('55m', $twigExtension->hoursAndMinutes(55));
-        $this->assertEquals('1h', $twigExtension->hoursAndMinutes(60));
-        $this->assertEquals('1h 10m', $twigExtension->hoursAndMinutes(70));
-        $this->assertEquals('6h', $twigExtension->hoursAndMinutes(360));
-        $this->assertEquals('6h 30m', $twigExtension->hoursAndMinutes(390));
+    public function testHandMs() {
+        $twig_extension = new TwigExtension();
+        static::assertEquals('00:00', $twig_extension->hoursAndMinutes(0));
+        static::assertEquals('00:55', $twig_extension->hoursAndMinutes(55));
+        static::assertEquals('01:00', $twig_extension->hoursAndMinutes(60));
+        static::assertEquals('01:10', $twig_extension->hoursAndMinutes(70));
+        static::assertEquals('06:00', $twig_extension->hoursAndMinutes(360));
+        static::assertEquals('06:30', $twig_extension->hoursAndMinutes(390));
     }
 }

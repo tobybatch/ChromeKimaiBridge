@@ -24,21 +24,6 @@ class TwigExtension extends AbstractExtension
         $hours = (int)(floor($mins / 60));
         $minutes = (int)($mins - ($hours * 60));
 
-        $time = sprintf("%02d:%02d", $hours, $minutes);
-//        $time = "";
-//        if ($hours > 0) {
-//            $time = $hours . "h";
-//        }
-//        if ($hours > 0 && $minutes > 0) {
-//            $time = $time . " ";
-//        }
-//        if ($minutes > 0) {
-//            $time = $time . $minutes . "m";
-//        }
-//
-//        if ($time == "") {
-//            $time = "0m";
-//        }
-        return $time;
+        return sprintf("%02d:%02d", $hours, $minutes);
     }
 }

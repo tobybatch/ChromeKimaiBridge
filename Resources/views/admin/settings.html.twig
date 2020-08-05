@@ -1,4 +1,5 @@
-{% extends '../base.html.twig' %}
+{% extends 'base.html.twig' %}
+
 {% import "macros/widgets.html.twig" as widgets %}
 
 {% block page_title %}Chrome Plugin Settings{% endblock %}
@@ -60,7 +61,7 @@
                                 <a href="{{
                                     path('chrome_settings',
                                     {
-                                        host: form.hostname.vars.value
+                                        hostname: form.hostname.vars.value
                                     },
                                     relative = false )
                                 }}"><i class="fas fa-trash-alt"></i></a>&nbsp;
