@@ -157,7 +157,7 @@ class ChromeController extends TimesheetAbstractController
         $board_id = str_replace("/", "_", urlencode((string)$board_id));
         $card_id = str_replace("/", "_", urlencode((string)$card_id));
         // forward to the chrome_popup route.
-        $logger->debug(sprintf("Returning board id=%s, card id=%s", $board_id, $card_id));
+        $logger->error(sprintf("Returning board id=%s, card id=%s", $board_id, $card_id));
         return new JsonResponse(
             [
                 'boardId' => $board_id,
