@@ -141,7 +141,7 @@ class SettingRepo
             return true;
         } else {
             $this->logger->warning("Entity does not exist", ['filename' => $filename]);
-            throw new FileNotFoundException($filename);
+            return false;
         }
     }
 }

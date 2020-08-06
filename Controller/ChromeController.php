@@ -383,6 +383,8 @@ class ChromeController extends TimesheetAbstractController
         $hostname = $request->query->get('hostname');
         if ($hostname) {
             $chromeSettingRepository->removeByHost($hostname, PHP_URL_HOST);
+            // By redirecting we get a clean url
+            return $this->redirectToRoute("chrome_settings");
         }
 
         // Create the empty add form

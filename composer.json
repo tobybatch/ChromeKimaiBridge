@@ -3,7 +3,7 @@
     "description": "Allow a user to log time directly into kimai",
     "homepage": "https://www.neontribe.co.uk",
     "type": "kimai-plugin",
-    "version": "0.2.0",
+    "version": "1.0.0",
     "require": {
         "../../../vendor/kimai/kimai2-composer": "*"
     },
