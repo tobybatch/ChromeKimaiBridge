@@ -154,8 +154,8 @@ class ChromeController extends TimesheetAbstractController
             $card_id = $matches[0] ?? false;
         }
         // Make the names URI safe
-        $board_id = str_replace("/", "_", urlencode((string)$board_id));
-        $card_id = str_replace("/", "_", urlencode((string)$card_id));
+        $board_id = str_replace("/", "_", ((string)$board_id));
+        $card_id = str_replace("/", "_", ((string)$card_id));
         // forward to the chrome_popup route.
         $logger->error(sprintf("Returning board id=%s, card id=%s", $board_id, $card_id));
         return new JsonResponse(
