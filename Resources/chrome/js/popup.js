@@ -26,7 +26,7 @@ function loadIframe(pageDetails) {
         } else {
             kurl = kimaiurl
             // Send the URI to kimai and see what we get
-            $.ajax(kurl + "chrome/uri?uri=" + location)
+            $.ajax(kurl + "/chrome/uri?uri=" + location)
                 .success(function (data) {
                     var boardId = data['boardId'];
                     var cardId = data['cardId'];
