@@ -3,6 +3,11 @@ function loadIframe(pageDetails) {
         kimaiurl: ""
     }, function (items) {
         checkKimaiUrl(items.kimaiurl);
+        requestPage(items.kimaiurl);
+    });
+    
+    function requestPage(kimaiurl) {
+        debugger;
 
         // Is this github or trello?
         var location = new URL(pageDetails.url);
@@ -17,15 +22,14 @@ function loadIframe(pageDetails) {
         if (hostname == "trello.com") {
             console.log("On trello");
             var cardId = path[2];
-            getTrelloCardData(location, cardId, items.kimaiurl)
+            getTrelloCardData(location, cardId, kimaiurl)
         } else {
+            kurl = kimaiurl
             // Send the URI to kimai and see what we get
-            kurl = kimaiurl;
-            $.ajax(url + "?uri=" + location)
+            $.ajax(kurl + "chrome/uri?uri=" + location)
                 .success(function (data) {
                     var boardId = data['boardId'];
                     var cardId = data['cardId'];
-                    kurl = kimaiurl;
                     if (boardId !== undefined) {
                         // build URL with card ID and board ID
                         kurl += "/chrome/popup/" + boardId + "/" + cardId;
@@ -33,10 +37,10 @@ function loadIframe(pageDetails) {
                     $("#content").attr("src", kurl);
                 })
                 .fail(function (data) {
-                    $("#content").attr("src", url)
+                    $("#content").attr("src", kurl)
                 });
         }
-    });
+    };
 }
 
 function getTrelloCardData(url, cardId, kimaiurl) {
@@ -46,7 +50,7 @@ function getTrelloCardData(url, cardId, kimaiurl) {
             kurl = kimaiurl;
             if (boardId !== undefined) {
                 // build URL with card ID and board ID
-                kurl += "/chrome/popup/" + boardId + "/" + cardId;
+                kurl += "chrome/popup/" + boardId + "/" + cardId;
             }
             $("#content").attr("src", kurl);
         })
