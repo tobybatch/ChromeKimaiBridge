@@ -1,0 +1,31 @@
+{% extends 'base.html.twig' %}
+
+{% block page_title %}
+Chrome plugin: Test Regex
+{% endblock %}
+
+{% block page_content %}
+    <div>This page can bu used to test your regex's. Just put the sample uri in the uri box and your regex(s) in the two
+        regex boxes and press test. This will then call the chrome plugin service and print the board id and card id it
+        would return if being used from the plugin.
+    </div>
+    {% if errors | length > 0 %}
+        <div  class="alert alert-danger">
+            {% for error in errors %}
+                <p>{{ error }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {% if matches | length > 0 %}
+        <div class="alert alert-success">
+            {% for key, match in matches %}
+                <p>{{ key }}: {{ match }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+    <div>
+        {{ form_start(test_form) }}
+        {{ form_widget(test_form) }}
+        {{ form_end(test_form) }}
+    </div>
+{% endblock %}
