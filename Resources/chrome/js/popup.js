@@ -27,7 +27,7 @@ function loadIframe(pageDetails) {
             kurl = kimaiurl
             // Send the URI to kimai and see what we get
             console.log("Not Trello, asking kimai for a board id.")
-            $.ajax(kurl + "/chrome/uri?uri=" + location)
+            $.ajax(kurl + "/chrome/uri?uri=" + encodeURIComponent(location))
                 .success(function (data) {
                     var boardId = data['boardId'];
                     var cardId = data['cardId'];

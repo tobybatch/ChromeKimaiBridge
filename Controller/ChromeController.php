@@ -25,6 +25,7 @@ use KimaiPlugin\ChromePluginBundle\EventSubscriber\TimesheetFieldSubscriber;
 use KimaiPlugin\ChromePluginBundle\Exception\NoActivitiesException;
 use KimaiPlugin\ChromePluginBundle\Exception\ProjectNotFoundException;
 use KimaiPlugin\ChromePluginBundle\Repository\SettingRepo;
+use KimaiPlugin\ChromePluginBundle\Service\ChromeService;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
@@ -39,7 +40,6 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -125,37 +125,19 @@ class ChromeController extends TimesheetAbstractController
      *
      * @param Request $request
      * @param LoggerInterface $logger
-     * @param TimesheetRepository $timesheetRepository
-     * @param SettingRepo $chromeSettingRepo
+     * @param ChromeService $chromeService
      * @return Response
      */
     public function popupWithUri(
         Request $request,
         LoggerInterface $logger,
-        TimesheetRepository $timesheetRepository,
-        SettingRepo $chromeSettingRepo)
+        ChromeService $chromeService)
     {
         // extract the board/card ids from the URI
-        $uri_from_plugin = $request->query->get('uri');
+        $uri_from_plugin = urldecode($request->query->get('uri'));
         $logger->debug(sprintf("URI Received: %s", $uri_from_plugin));
-        $hostname = parse_url($uri_from_plugin, PHP_URL_HOST);
-        $setting = $chromeSettingRepo->findByHostname($hostname);
-        if (empty($setting->getRegex2())) {
-            $matches = [];
-            preg_match("/" . $setting->getRegex1() . "/", $uri_from_plugin, $matches);
-            $board_id = $matches[0] ?? false;
-            $card_id = $matches[1] ?? false;
-        } else {
-            $matches = [];
-            preg_match("/" . $setting->getRegex1() . "/", $uri_from_plugin, $matches);
-            $board_id = $matches[0] ?? false;
-            $matches = [];
-            preg_match("/" . $setting->getRegex2() . "/", $uri_from_plugin, $matches);
-            $card_id = $matches[0] ?? false;
-        }
-        // Make the names URI safe
-        $board_id = str_replace("/", "_", ((string)$board_id));
-        $card_id = str_replace("/", "_", ((string)$card_id));
+
+        list($board_id, $card_id) = $chromeService->parseUriForIds($uri_from_plugin);
         // forward to the chrome_popup route.
         $logger->error(sprintf("Returning board id=%s, card id=%s", $board_id, $card_id));
         return new JsonResponse(
@@ -381,6 +363,7 @@ class ChromeController extends TimesheetAbstractController
     {
         $form_builder = $this->createFormBuilder();
         $forms = [];
+        $entities = [];
 
         // Process a delete, if present
         $hostname = $request->query->get('hostname');
@@ -416,6 +399,7 @@ class ChromeController extends TimesheetAbstractController
 
         // Create edit forms for the existing settings
         foreach ($settings as $setting) {
+            $entities[] = $setting;
             $forms[] = $form_builder
                 ->add('hostname', TextType::class, [
                     'data' => $setting->getHostname(),
@@ -433,7 +417,6 @@ class ChromeController extends TimesheetAbstractController
                 ->getForm();
         }
 
-
         $form_views = [];
         foreach ($forms as $form) {
             $form_views[] = $form->createView();
@@ -446,11 +429,13 @@ class ChromeController extends TimesheetAbstractController
 
         // Add the empty (add) form at the end
         $form_views[] = $empty_form->createView();
+        $entities[] = new SettingEntity();
 
         return $this->render(
             '@ChromePlugin/admin/settings.html.twig',
             [
                 'forms' => $form_views,
+                'entities' => $entities,
             ]
         );
     }
@@ -463,9 +448,65 @@ class ChromeController extends TimesheetAbstractController
     {
         $chrome_setting = new SettingEntity();
         $chrome_setting->setHostname($form_data['hostname']);
-        $chrome_setting->setRegex1($form_data['regex1']);
-        $chrome_setting->setRegex2($form_data['regex2']);
+        $chrome_setting->setRegex1($form_data['regex1'] ?? "");
+        $chrome_setting->setRegex2($form_data['regex2'] ?? "");
         return $chrome_setting;
+    }
+
+    /**
+     * @Route(path="settings/test", name="chrome_settings_test", methods={"GET", "POST"})
+     * @Security("is_granted('system_configuration')")
+     *
+     * @param SettingRepo $chromeSettingRepository
+     * @param ChromeService $chromeService
+     * @param Request $request
+     * @return Response
+     */
+    public function settingsTest(SettingRepo $chromeSettingRepository, ChromeService $chromeService, Request $request)
+    {
+        $hostname = $request->query->get("hostname");
+        if ($hostname != null) {
+            $setting_entity = $chromeSettingRepository->findByHostname($hostname);
+        } else {
+            $setting_entity = new SettingEntity();
+        }
+        $form_builder = $this->createFormBuilder();
+        $test_form = $form_builder
+            ->add('uri', TextType::class)
+            ->add('regex1', TextType::class, ['data' => $setting_entity->getRegex1()])
+            ->add('regex2', TextType::class, ['data' => $setting_entity->getRegex2()])
+            ->add('Test', SubmitType::class)
+            ->getForm();
+
+        $matches = [];
+        $errors = [];
+        $test_form->handleRequest($request);
+        if ($test_form->isSubmitted() && $test_form->isValid()) {
+            $form_data = $test_form->getData();
+            $test_uri = $form_data['uri'];
+            $test_regex1 = $form_data['regex1'];
+            $test_regex2 = $form_data['regex2'];
+
+            $test_entity = new SettingEntity();
+            $test_entity->setRegex1($test_regex1);
+            $test_entity->setRegex2($test_regex2);
+
+            try {
+                $matches = $chromeService->getBoardAndCardId($test_entity, $test_uri);
+            } catch (\Throwable $throwable) {
+                $errors[] = $throwable->getMessage();
+            }
+
+        }
+
+        return $this->render(
+            '@ChromePlugin/admin/settings-test.html.twig',
+            [
+                'test_form' => $test_form->createView(),
+                'matches' => $matches,
+                'errors' => $errors,
+            ]
+        );
     }
 
     /**
@@ -521,7 +562,7 @@ class ChromeController extends TimesheetAbstractController
             }
             $existing_id_list[] = $projectId;
 
-            $existing_id_meta->setValue(implode(",",$existing_id_list));
+            $existing_id_meta->setValue(implode(",", $existing_id_list));
             $project_to_update->setMetaField($existing_id_meta);
             $entityManager->persist($project_to_update);
             $entityManager->flush();

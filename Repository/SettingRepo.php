@@ -18,6 +18,10 @@ class SettingRepo
     private Filesystem $filesystem;
 
     /**
+     * @method findByHostname
+     */
+
+    /**
      * @var string
      */
     private string $storage;
@@ -42,7 +46,7 @@ class SettingRepo
 
             $chrome_setting = new SettingEntity();
             $chrome_setting->setHostname("github.com");
-            $chrome_setting->setRegex1("(?<=^https:\/\/github.com\/)(\w+\/\w+)");
+            $chrome_setting->setRegex1("(?<=github.com\/)([a-zA-Z-]+)");
             $chrome_setting->setRegex2("\d+$");
             $this->save($chrome_setting);
         }

@@ -49,11 +49,14 @@
                 <th>&nbsp;</th>
                 <th>host</th>
                 <th>Regex 1</th>
-                <th>Regex 1</th>
+                <th>Regex 2</th>
+                <th>&nbsp;</th>
+                <th>&nbsp;</th>
             </tr>
         </thead>
         <tbody>
-            {% for form in forms %}
+            {% for key, form in forms %}
+                {% set entity = entities[key] %}
                 <tr>
                     {{ form_start(form) }}
                         <td>
@@ -70,7 +73,14 @@
                         <td>{{ form_widget(form.hostname) }}</td>
                         <td>{{ form_widget(form.regex1) }}</td>
                         <td>{{ form_widget(form.regex2) }}</td>
-                        <td>{{ form_widget(form.send) }}</td>
+                    <td>{{ form_widget(form.send) }}</td>
+                    <td>
+                        {%  if entity.hostname is not empty  %}
+                            <a href="{{ path('chrome_settings_test', { 'hostname': entity.hostname }) }}">Test</a>
+                        {% else %}
+                            &nbsp;
+                        {% endif %}
+                    </td>
                     {{ form_end(form) }}
 
                 </tr>
