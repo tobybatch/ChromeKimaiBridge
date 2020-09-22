@@ -45,9 +45,9 @@ class ChromeService
     public function getBoardAndCardId(SettingEntity $setting, string $uri_from_plugin) {
         if (empty($setting->getRegex2())) {
             $matches = [];
-            preg_match("/" . $setting->getRegex1() . "/", $uri_from_plugin, $matches);
-            $board_id = $matches[0] ?? false;
-            $card_id = $matches[1] ?? false;
+            preg_match_all("/" . $setting->getRegex1() . "/", $uri_from_plugin, $matches);
+            $board_id = $matches[0][0] ?? false;
+            $card_id = $matches[0][1] ?? false;
         } else {
             $matches = [];
             preg_match("/" . $setting->getRegex1() . "/", $uri_from_plugin, $matches);

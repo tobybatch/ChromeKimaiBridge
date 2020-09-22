@@ -479,7 +479,10 @@ class ChromeController extends TimesheetAbstractController
         $test_form = $form_builder
             ->add('uri', TextType::class)
             ->add('regex1', TextType::class, ['data' => $setting_entity->getRegex1()])
-            ->add('regex2', TextType::class, ['data' => $setting_entity->getRegex2()])
+            ->add('regex2', TextType::class, [
+                'data' => $setting_entity->getRegex2(),
+                'required' => false
+            ])
             ->add('Test', SubmitType::class)
             ->getForm();
 
@@ -494,7 +497,9 @@ class ChromeController extends TimesheetAbstractController
 
             $test_entity = new SettingEntity();
             $test_entity->setRegex1($test_regex1);
-            $test_entity->setRegex2($test_regex2);
+            if ($test_regex2) {
+                $test_entity->setRegex2($test_regex2);
+            }
 
             try {
                 $matches = $chromeService->getBoardAndCardId($test_entity, $test_uri);
