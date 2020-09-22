@@ -23,7 +23,8 @@
   "permissions": [
     "tabs",
     "storage",
-    "https://*/*"
+    "https://*/*",
+    "http://*/*"
   ],
   "icons": {
     "16": "images/icon-16x16.png",

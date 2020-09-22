@@ -21,20 +21,20 @@ function loadIframe(pageDetails) {
         // Trello is always turned on
         if (hostname == "trello.com") {
             console.log("On trello");
-            var cardId = path[2];
-            getTrelloCardData(location, cardId, kimaiurl)
+            var card_id = path[2];
+            getTrelloCardData(location, card_id, kimaiurl)
         } else {
             kurl = kimaiurl
             // Send the URI to kimai and see what we get
             console.log("Not Trello, asking kimai for a board id.")
             $.ajax(kurl + "/chrome/uri?uri=" + encodeURIComponent(location))
                 .success(function (data) {
-                    var boardId = data['boardId'];
-                    var cardId = data['cardId'];
-                    console.log("Got boardId=" + boardId + ", cardId=" + cardId);
-                    if (boardId !== undefined) {
+                    var board_id = data['board_id'];
+                    var card_id = data['card_id'];
+                    console.log("Got board_id=" + board_id + ", card_id=" + card_id);
+                    if (board_id !== undefined) {
                         // build URL with card ID and board ID
-                        kurl += "/chrome/popup/" + boardId + "/" + cardId;
+                        kurl += "/chrome/popup/" + board_id + "/" + card_id;
                     }
                     $("#content").attr("src", kurl);
                 })
@@ -45,14 +45,14 @@ function loadIframe(pageDetails) {
     };
 }
 
-function getTrelloCardData(url, cardId, kimaiurl) {
+function getTrelloCardData(url, card_id, kimaiurl) {
     $.ajax(url + ".json")
         .success(function (data) {
-            var boardId = data['idBoard'];
+            var board_id = data['idBoard'];
             kurl = kimaiurl;
-            if (boardId !== undefined) {
+            if (board_id !== undefined) {
                 // build URL with card ID and board ID
-                kurl += "chrome/popup/" + boardId + "/" + cardId;
+                kurl += "chrome/popup/" + board_id + "/" + card_id;
             }
             $("#content").attr("src", kurl);
         })

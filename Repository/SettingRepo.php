@@ -11,6 +11,8 @@ use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * Class ChromeSettingRepository
+ *
+ * @method SettingEntity findOneBy(int $id) Fetch one entity by id
  */
 class SettingRepo
 {

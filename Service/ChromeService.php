@@ -31,7 +31,7 @@ class ChromeService
     {
         $setting = $this->fetchEntity($uri_from_plugin);
         if (!$setting) {
-            throw new RuntimeException("");
+            throw new RuntimeException("Unknown URI " . $uri_from_plugin);
         }
 
         return $this->getBoardAndCardId($setting, $uri_from_plugin);
@@ -61,8 +61,8 @@ class ChromeService
         $card_id = str_replace("/", "_", ((string)$card_id));
 
         return [
-            'boardId' => $board_id,
-            'cardId' => $card_id,
+            'board_id' => $board_id,
+            'card_id' => $card_id,
         ];
     }
 

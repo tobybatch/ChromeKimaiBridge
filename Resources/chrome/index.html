@@ -207,7 +207,7 @@
             updateActivities($("#project").val());
 
             var timesheets = getTimesheets(projAndIssue.issue);
-            var projectId = false;
+            var project_id = false;
             $("#timesheets").find('option').remove();
             $.each(timesheets, function (key, value) {
                 // var msg = value.date + " " + value.desc + " " + value.who + " " + value.duration;
@@ -216,14 +216,14 @@
                     "<li><a href='kimai timesheet url'>" + msg + "</a></li>"
                 );
                 // Also set the current project if not set already
-                if (!projectId) {
-                  projectId = value.project;
+                if (!project_id) {
+                  project_id = value.project;
                 }
             });
 
             // If we have at least one timesheet the project will exist and we can set it.
-            if (projectId) {
-              $("#project option[value='" + projectId + "']").prop('selected', true);
+            if (project_id) {
+              $("#project option[value='" + project_id + "']").prop('selected', true);
               $("#project-group").hide();
             }
         }

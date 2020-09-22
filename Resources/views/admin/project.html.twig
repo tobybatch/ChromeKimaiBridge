@@ -3,7 +3,7 @@
 {% block content %}
     <h2>Board not found</h2>
     <div>
-    I couldn't find a project associated with the board {{ projectId }}.  Choose the board we should be logging to.
+    I couldn't find a project associated with the board {{ project_id }}.  Choose the board we should be logging to.
     </div>
 
     {% if is_granted('ROLE_ADMIN') %}

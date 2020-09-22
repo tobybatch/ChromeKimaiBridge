@@ -137,45 +137,49 @@ class ChromeController extends TimesheetAbstractController
         $uri_from_plugin = urldecode($request->query->get('uri'));
         $logger->debug(sprintf("URI Received: %s", $uri_from_plugin));
 
-        list($board_id, $card_id) = $chromeService->parseUriForIds($uri_from_plugin);
+        $id_pair = $chromeService->parseUriForIds($uri_from_plugin);
+        $board_id = $id_pair['board_id'];
+        $card_id = $id_pair['card_id'];
         // forward to the chrome_popup route.
         $logger->error(sprintf("Returning board id=%s, card id=%s", $board_id, $card_id));
         return new JsonResponse(
             [
-                'boardId' => $board_id,
-                'cardId' => $card_id,
+                'board_id' => $board_id,
+                'card_id' => $card_id,
             ]
         );
     }
 
     /**
-     * @Route(path="popup/{projectId}/{cardId}", name="chrome_popup", methods={"GET", "POST"})
+     * @Route(path="popup/{project_id}/{card_id}", name="chrome_popup", methods={"GET", "POST"})
+     *
+     * http://localhost/workspace/kimai/ChromeBundle/public/chrome/popup/tobybatch/160
      *
      * Create the iframe for browser plugins..
      *
      * @param Request $request
      * @param LoggerInterface $logger
      * @param TimesheetRepository $timesheetRepo
-     * @param string $projectId
-     * @param string|bool $cardId
+     * @param string $project_id
+     * @param string|bool $card_id
      * @return Response
      */
     public function popupWithIds(
         Request $request,
         LoggerInterface $logger,
         TimesheetRepository $timesheetRepo,
-        string $projectId,
-        $cardId = false)
+        string $project_id,
+        $card_id = false)
     {
-        $logger->info("Project ID:" . $projectId);
+        $logger->info("Project ID:" . $project_id);
         // Log time tab
         try {
-            $activities = $this->getActivities($projectId);
+            $activities = $this->getActivities($project_id);
         } catch (RuntimeException $exception) {
             $logger->error($exception->getMessage());
             return $this->redirectToRoute('chrome_project', [
-                "projectId" => $projectId,
-                "cardId" => $cardId ?? "false",
+                "project_id" => $project_id,
+                "card_id" => $card_id ?? "false",
             ]);
         }
 
@@ -202,25 +206,26 @@ class ChromeController extends TimesheetAbstractController
             $timesheet->setProject($activity->getProject());
             $timesheet->setUser($this->getUser());
 
-            if ($cardId) {
-                $card_id_meta = (new TimesheetMeta())->setName(TimesheetFieldSubscriber::META_NAME)->setValue($cardId);
+            if ($card_id) {
+                $card_id_meta = (new TimesheetMeta())->setName(TimesheetFieldSubscriber::META_NAME)->setValue($card_id);
                 $timesheet->setMetaField($card_id_meta);
             }
             $this->entityManager->persist($timesheet);
             $this->entityManager->flush();
 
-            $this->addFlash('success', 'Time logged!');
-            $show_log = 'tabs-2';
+            $this->addFlash('success', 'Time logged');
+            $show_log = 'history';
+            $logger->debug("Time logged");
         }
 
-        $projects = $this->getProjectsById($projectId);
+        $projects = $this->getProjectsById($project_id);
 
         // Logged time tab
         $timesheets = [];
-        if ($cardId) {
+        if ($card_id) {
             $timesheet_metas = $this->getDoctrine()->getManager()
                 ->getRepository(TimesheetMeta::class)
-                ->findByValue($cardId);
+                ->findByValue($card_id);
             $sheets = [];
             foreach ($timesheet_metas as $timesheet) {
                 $sheets[] = $timesheet->getEntity();
@@ -240,20 +245,20 @@ class ChromeController extends TimesheetAbstractController
             [
                 'form' => $log_time_form->createView(),
                 'timesheets' => $timesheets,
-                'boardId' => $projectId,
-                'cardId' => $cardId,
+                'board_id' => $project_id,
+                'card_id' => $card_id,
                 'show_log' => $show_log,
             ]
         );
     }
 
     /**
-     * @param $projectId
+     * @param $project_id
      * @return array
      */
-    private function getActivities($projectId)
+    private function getActivities($project_id)
     {
-        $projects = $this->getProjectsById($projectId);
+        $projects = $this->getProjectsById($project_id);
         if (count($projects) == 0) {
             throw new ProjectNotFoundException("Could not find valid project meta data");
         }
@@ -281,14 +286,14 @@ class ChromeController extends TimesheetAbstractController
     }
 
     /**
-     * @param $projectId
+     * @param $project_id
      * @return array
      */
-    private function getProjectsById($projectId)
+    private function getProjectsById($project_id)
     {
         $builder = $this->entityManager->getRepository(ProjectMeta::class)->createQueryBuilder('p');
-        $query = $builder->where($builder->expr()->like('p.value', ':projectid'))
-            ->setParameter('projectid', '%' . $projectId . '%')
+        $query = $builder->where($builder->expr()->like('p.value', ':project_id'))
+            ->setParameter('project_id', '%' . $project_id . '%')
             ->getQuery();
         $project_metas = $query->getResult();
         if (!count($project_metas)) {
@@ -368,7 +373,7 @@ class ChromeController extends TimesheetAbstractController
         // Process a delete, if present
         $hostname = $request->query->get('hostname');
         if ($hostname) {
-            $chromeSettingRepository->removeByHost($hostname, PHP_URL_HOST);
+            $chromeSettingRepository->removeByHost($hostname);
             // By redirecting we get a clean url
             return $this->redirectToRoute("chrome_settings");
         }
@@ -510,24 +515,24 @@ class ChromeController extends TimesheetAbstractController
     }
 
     /**
-     * @Route(path="project/{projectId}/{cardId}", name="chrome_project", methods={"GET", "POST"})
+     * @Route(path="project/{project_id}/{card_id}", name="chrome_project", methods={"GET", "POST"})
      *
      * @param Request $request
      * @param EntityManagerInterface $entityManager
      * @param ProjectRepository $projectRepo
-     * @param string $projectId
-     * @param string $cardId
+     * @param string $project_id
+     * @param string $card_id
      * @return Response
      */
     public function setProjectAssociation(
         Request $request,
         EntityManagerInterface $entityManager,
         ProjectRepository $projectRepo,
-        string $projectId,
-        string $cardId = "")
+        string $project_id,
+        string $card_id = "")
     {
-        if (empty($cardId)) {
-            $cardId = false;
+        if (empty($card_id)) {
+            $card_id = false;
         }
         $all_projects = $projectRepo->findAll();
         $projects = [];
@@ -560,20 +565,24 @@ class ChromeController extends TimesheetAbstractController
             } else {
                 $existing_id_list = explode(",", $existing_id_meta->getValue());
             }
-            $existing_id_list[] = $projectId;
+            $existing_id_list[] = $project_id;
+            $id_list_as_str = implode(",", $existing_id_list);
 
-            $existing_id_meta->setValue(implode(",", $existing_id_list));
+            $existing_id_meta->setValue($id_list_as_str);
+            // For some reason the meta field type is null here.  Force it to be a string
+            // TODO Figure out why the metadata field type is null
+            $existing_id_meta->setType(TextType::class);
             $project_to_update->setMetaField($existing_id_meta);
             $entityManager->persist($project_to_update);
             $entityManager->flush();
-            return $this->redirectToRoute('chrome_popup', ["projectId" => $projectId, "cardId" => $cardId]);
+            return $this->redirectToRoute('chrome_popup', ["project_id" => $project_id, "card_id" => $card_id]);
         }
 
         return $this->render(
             '@ChromePlugin/admin/project.html.twig',
             [
-                'projectId' => $projectId,
-                'cardId' => $cardId,
+                'project_id' => $project_id,
+                'card_id' => $card_id,
                 'projects' => $project_form->createView(),
             ]
         );
