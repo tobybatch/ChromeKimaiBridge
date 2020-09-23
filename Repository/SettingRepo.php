@@ -3,11 +3,11 @@ declare(strict_types=1);
 
 namespace KimaiPlugin\ChromePluginBundle\Repository;
 
-use _HumbugBoxebb6c51d1e3e\Nette\FileNotFoundException;
 use KimaiPlugin\ChromePluginBundle\Entity\SettingEntity;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\HttpFoundation\File\Exception\FileNotFoundException;
 
 /**
  * Class ChromeSettingRepository
@@ -150,4 +150,21 @@ class SettingRepo
             return false;
         }
     }
+
+    protected function getPredefinedGitHub() {
+        $settingsEntity = new SettingEntity();
+        $settingsEntity->setHostname("github.com");
+        $settingsEntity->setRegex1("(?<=github.com\/)([a-zA-Z-]+)");
+        $settingsEntity->setRegex2("\d+$");
+        return $settingsEntity;
+    }
+
+    protected function getPredefinedNextCloudDeck() {
+        $settingsEntity = new SettingEntity();
+        $settingsEntity->setHostname("some.next.cloud");
+        $settingsEntity->setRegex1("[0-9]+");
+        $settingsEntity->setRegex2("");
+        return $settingsEntity;
+    }
+
 }

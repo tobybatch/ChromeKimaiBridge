@@ -2,13 +2,8 @@
 
 namespace KimaiPlugin\ChromePluginBundle\tests;
 
-use _HumbugBoxebb6c51d1e3e\Nette\FileNotFoundException;
 use KimaiPlugin\ChromePluginBundle\Entity\SettingEntity;
-use KimaiPlugin\ChromePluginBundle\Repository\SettingRepo;
-use Monolog\Logger;
-use Symfony\Bundle\FrameworkBundle\KernelBrowser;
-use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\HttpFoundation\File\Exception\FileNotFoundException;
 
 /**
  * Class ChromeRepoTest
@@ -16,11 +11,12 @@ use Symfony\Component\Filesystem\Filesystem;
  */
 class RepoTest extends ControllerBase
 {
-    public function testFindByHost(){
+    public function testFindByHost()
+    {
         $setting = $this->chromeRepo->findByHostname("github.com");
         self::assertNotFalse($setting);
         self::assertEquals("github.com", $setting->getHostname());
-        self::assertEquals('(?<=^https:\/\/github.com\/)(\w+\/\w+)', $setting->getRegex1());
+        self::assertEquals('(?<=github.com\/)([a-zA-Z-]+)', $setting->getRegex1());
         self::assertEquals("\d+$", $setting->getRegex2());
 
         $this->expectException(FileNotFoundException::class);
@@ -28,7 +24,8 @@ class RepoTest extends ControllerBase
         self::assertFileExists($setting);
     }
 
-    public function testFindAll(){
+    public function testFindAll()
+    {
         $settings = $this->chromeRepo->findAll();
         self::assertEquals(2, count($settings));
 
@@ -39,11 +36,12 @@ class RepoTest extends ControllerBase
 
         $setting1 = $settings[1];
         self::assertEquals("github.com", $setting1->getHostname());
-        self::assertEquals('(?<=^https:\/\/github.com\/)(\w+\/\w+)', $setting1->getRegex1());
+        self::assertEquals('(?<=github.com\/)([a-zA-Z-]+)', $setting1->getRegex1());
         self::assertEquals("\d+$", $setting1->getRegex2());
     }
 
-    public function testSave() {
+    public function testSave()
+    {
         $setting = new SettingEntity();
         $setting->setHostname("new.hostname.com");
         $setting->setRegex1("new regex");
@@ -51,7 +49,8 @@ class RepoTest extends ControllerBase
         self::assertFileExists($this->storage . '/new.hostname.com.json');
     }
 
-    public function testSaveAll() {
+    public function testSaveAll()
+    {
         $setting0 = new SettingEntity();
         $setting0->setHostname("new0.hostname.com");
         $setting0->setRegex1("new0 regex");
@@ -67,24 +66,26 @@ class RepoTest extends ControllerBase
         self::assertFileExists($this->storage . '/new1.hostname.com.json');
     }
 
-    public function testRemove() {
+    public function testRemove()
+    {
         $setting0 = new SettingEntity();
         $setting0->setHostname("github.com");
         self::assertTrue($this->chromeRepo->remove($setting0));
         self::assertFileNotExists($this->storage . '/github.com.json');
 
-        $this->expectException(FileNotFoundException::class);
         self::assertFalse($this->chromeRepo->remove($setting0));
     }
 
-    public function testRemoveAll() {
+    public function testRemoveAll()
+    {
         $this->chromeRepo->removeAll();
 
         self::assertFileNotExists($this->storage . '/github.com.json');
         self::assertFileNotExists($this->storage . '/foo.com.json');
     }
 
-    public function removeByHostName() {
+    public function removeByHostName()
+    {
         $this->chromeRepo->removeByHost("github.com");
         self::assertFileNotExists($this->storage . '/github.com.json');
     }

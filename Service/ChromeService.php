@@ -2,9 +2,9 @@
 
 namespace KimaiPlugin\ChromePluginBundle\Service;
 
-use http\Exception\RuntimeException;
 use KimaiPlugin\ChromePluginBundle\Entity\SettingEntity;
 use KimaiPlugin\ChromePluginBundle\Repository\SettingRepo;
+use Symfony\Component\PropertyAccess\Exception\RuntimeException;
 
 /**
  * Class ChromeService
@@ -30,10 +30,6 @@ class ChromeService
     public function parseUriForIds(string $uri_from_plugin)
     {
         $setting = $this->fetchEntity($uri_from_plugin);
-        if (!$setting) {
-            throw new RuntimeException("Unknown URI " . $uri_from_plugin);
-        }
-
         return $this->getBoardAndCardId($setting, $uri_from_plugin);
     }
 
