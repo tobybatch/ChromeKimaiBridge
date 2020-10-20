@@ -146,6 +146,12 @@ class ChromeController extends TimesheetAbstractController
             [
                 'board_id' => $board_id,
                 'card_id' => $card_id,
+            ],
+            200,
+            [
+                'Access-Control-Allow-Origin' => '*',
+                'Access-Control-Allow-Headers' => 'origin, content-type, accept',
+                'Access-Control-Allow-Methods' => 'POST, GET, PUT, DELETE, PATCH, OPTIONS'
             ]
         );
     }
