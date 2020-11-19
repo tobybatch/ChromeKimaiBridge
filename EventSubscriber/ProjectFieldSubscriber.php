@@ -11,6 +11,8 @@ use Symfony\Component\Validator\Constraints\Length;
 
 class ProjectFieldSubscriber implements EventSubscriberInterface
 {
+    public const PROJECT_ID = "External Card/Project ID";
+
     public static function getSubscribedEvents(): array
     {
         return [
@@ -26,7 +28,7 @@ class ProjectFieldSubscriber implements EventSubscriberInterface
     private function prepareEntity(EntityWithMetaFields $entity, MetaTableTypeInterface $definition)
     {
         $definition
-            ->setName('External Board IDs (Comma sep.)')
+            ->setName(self::PROJECT_ID)
             ->setType(TextType::class)
             ->addConstraint(new Length(['max' => 255]))
             ->setIsVisible(true);

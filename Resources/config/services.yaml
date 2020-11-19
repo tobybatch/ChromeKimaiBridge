@@ -3,8 +3,8 @@ services:
         autowire: true
         autoconfigure: true
         public: false
-        #bind:
-        #    $dataDirectory: "%kimai.data_dir%"
+        bind:
+            $dataDirectory: "%kimai.data_dir%"
 
     KimaiPlugin\ChromePluginBundle\:
         resource: '../../*'
@@ -14,10 +14,6 @@ services:
         resource: '../../Controller'
         tags: ['controller.service_arguments']
         public: true
-
-    KimaiPlugin\ChromePluginBundle\Twig\:
-        resource: '../../Twig'
-        tags: ['twig.extension']
 
 #    KimaiPlugin\ChromePluginBundle\Service\:
 #        resource: '../../Service'

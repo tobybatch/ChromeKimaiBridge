@@ -1,298 +1,253 @@
 <?php
+
 namespace KimaiPlugin\ChromePluginBundle\Controller;
 
-use App\Controller\TimesheetAbstractController;
-use App\Entity\Activity;
+use App\Entity\Project;
 use App\Entity\ProjectMeta;
 use App\Entity\Timesheet;
 use App\Entity\TimesheetMeta;
-use App\Form\Type\DateTimePickerType;
 use App\Repository\ActivityRepository;
-use App\Repository\ProjectRepository;
-use App\Repository\TimesheetRepository;
-use App\Timesheet\TimesheetService;
-use Doctrine\ORM\EntityManagerInterface;
-use KimaiPlugin\ChromePluginBundle\Exception\NoActivitiesException;
-use KimaiPlugin\ChromePluginBundle\Exception\ProjectNotFoundException;
-use KimaiPlugin\ChromePluginBundle\Service\ChromePluginService;
-use Psr\Log\LoggerInterface;
+use App\Repository\UserRepository;
+use DateInterval;
+use DateTime;
+use Exception;
+use KimaiPlugin\ChromePluginBundle\Entity\SettingEntity;
+use KimaiPlugin\ChromePluginBundle\EventSubscriber\ProjectFieldSubscriber;
+use KimaiPlugin\ChromePluginBundle\EventSubscriber\TimesheetFieldSubscriber;
+use KimaiPlugin\ChromePluginBundle\Repository\SettingRepo;
 use RuntimeException;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
-use Symfony\Component\Form\Extension\Core\Type\ButtonType;
-use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
-use Symfony\Component\Form\Extension\Core\Type\DateType;
-use Symfony\Component\Form\Extension\Core\Type\NumberType;
-use Symfony\Component\Form\Extension\Core\Type\SubmitType;
-use Symfony\Component\Form\Extension\Core\Type\TextareaType;
-use Symfony\Component\Form\FormBuilderInterface;
-use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
  *
- * @Route(path="/chrome/")
- * @Security("is_granted('create_own_timesheet')")
+ * @ Security("is_granted('create_own_timesheet')")
+ * @Route(path="/api/chrome/json")
  */
-class ChromeController extends TimesheetAbstractController
+class ChromeController extends BaseController
 {
     /**
-     * @var TimesheetService
-     */
-    private TimesheetService $timesheetService;
-    /**
-     * @var EntityManagerInterface
-     */
-    private EntityManagerInterface $entityManager;
-    /**
-     * @var LoggerInterface
-     */
-    private LoggerInterface $logger;
-    /**
-     * @var ActivityRepository
-     */
-    private ActivityRepository $activityRepository;
-
-    /**
-     * @param EntityManagerInterface $entityManager
-     * @param LoggerInterface $logger
-     * @param ActivityRepository $activityRepository
-     * @param TimesheetRepository $repository
-     * @param TimesheetService $timesheetService
-     */
-    public function __construct(
-        EntityManagerInterface $entityManager,
-        LoggerInterface $logger,
-        ActivityRepository $activityRepository,
-        TimesheetRepository $repository,
-        TimesheetService $timesheetService
-    ) {
-        $this->entityManager = $entityManager;
-        $this->logger = $logger;
-        $this->activityRepository = $activityRepository;
-        $this->repository = $repository;
-        $this->timesheetService = $timesheetService;
-    }
-
-    /**
-     * @Route(path="status", name="chrome_status", methods={"GET"})
-     */
-    public function status() {
-        return new JsonResponse(
-            [
-                'name' => "Kimai chrome plugin",
-                'version' => "1.0.0",
-            ]
-        );
-    }
-
-    /**
-     * @Route(path="popup/{projectId}/{cardId}", name="chrome_popup", methods={"GET", "POST"})
-     *
-     * Create the iframe for browser plugins..
+     * @Route(path="/init", name="chrome_init", methods={"GET"})
      *
      * @param Request $request
-     * @param LoggerInterface $logger
-     * @param TimesheetRepository $timesheetRepository
-     * @param ProjectRepository $projectRepository
-     * @param $projectId
-     * @param $cardId
-     * @return Response
+     * @return JsonResponse
      */
-    public function pluginAction(
-        Request $request,
-        LoggerInterface $logger,
-        TimesheetRepository $timesheetRepository,
-        ProjectRepository $projectRepository,
-        $projectId,
-        $cardId = false)
+    public function getInit(Request $request): JsonResponse
     {
-        $logger->info("Project ID:" . $projectId);
-        // Log time tab
-        try {
-            $activities = $this->getActivities($projectId);
-        } catch (RuntimeException $exception) {
-            $logger->error($exception->getMessage());
-            return $this->render(
-                '@ChromePlugin/logtime_boardnotfound.html.twig',
-                ['projectId' => $projectId, 'cardId' => $cardId, 'message' => $exception->getMessage()]
-            );
+        $uri = $request->get("uri");
+        if (empty($uri)) {
+            throw new RuntimeException("No URI specified.");
         }
+        $data = $this->getInitData($uri);
+        $response = $this->makeJsonResponse($data);
 
-        $logTimeForm = $this->buildLogForm(
-            $this->createFormBuilder(/* Add hidden data here */),
-            $activities
-        );
+        $this->logger->debug("response", ["response" => $response]);
 
-        $logTimeForm->handleRequest($request);
-
-        $show = false;
-        if ($logTimeForm->isSubmitted() && $logTimeForm->isValid()) {
-            $this->processForm($logTimeForm, $this->getUser(), $cardId);
-            $this->container->get('router');
-            $this->addFlash('success', 'Time logged!');
-            $show = 'tabs-2';
-        }
-
-        $projects = $this->getProjectsById($projectId);
-
-        // Logged time tab
-        $timesheets = [];
-        if ($cardId) {
-            $timesheetMetas = $this->getDoctrine()->getManager()
-                ->getRepository(TimesheetMeta::class)
-                ->findByValue($cardId);
-            foreach ($timesheetMetas as $timesheet) {
-                $sheets = $timesheet->getEntity();
-            }
-            usort($sheets, [$this, "compareSheetsByDate"]);
-            $timesheets[$projects[0]->getName()] = $sheets;
-        } else {
-            foreach ($projects as $project) {
-                $sheets = $timesheetRepository->findBy(["project" => $project]);
-                usort($sheets, [$this, "compareSheetsByDate"]);
-                $timesheets[$project->getName()] = $sheets;
-            }
-        }
-
-        return $this->render(
-            '@ChromePlugin/pluggin.html.twig',
-            [
-                'form' => $logTimeForm->createView(),
-                'timesheets' => $timesheets,
-                'boardId' => $projectId,
-                'cardId' => $cardId,
-                'show' => $show,
-            ]
-        );
-    }
-
-    private function compareSheetsByDate(Timesheet $sheet1, Timesheet $sheet2) {
-        return $sheet1->getBegin() > $sheet2->getBegin();
-    }
-
-    private function getProjectsById($projectId) {
-        $builder = $this->entityManager->getRepository(ProjectMeta::class)->createQueryBuilder('p');
-        $query = $builder->where($builder->expr()->like('p.value', ':projectid'))
-            ->setParameter('projectid', '%' . $projectId . '%')
-            ->getQuery();
-        $projectMetas = $query->getResult();
-        if (!count($projectMetas)) {
-            return [];
-        }
-        else {
-            $projects = [];
-            foreach ($projectMetas as $projectMeta) {
-                $projects[] = $projectMeta->getEntity();
-            }
-        }
-        return $projects;
+        return $response;
     }
 
     /**
-     * @param $projectId
-     * @return array
+     * @Route(path="/registeredHosts", name="chrome_options", methods={"GET"})
+     *
+     * @return JsonResponse
      */
-    private function getActivities($projectId) {
-        $projects = $this->getProjectsById($projectId);
-        if (count($projects) == 0) {
-            throw new ProjectNotFoundException("Could not find valid project meta data");
-        }
-
-        $activities = [];
-        foreach ($projects as $project) {
-            $projectActivities = $this->activityRepository->findByProject($project);
-            if (count($projectActivities)) {
-                $activities[$project->getName()] = $projectActivities;
-            }
-        }
-
-        $builder = $this->entityManager->getRepository(Activity::class)->createQueryBuilder('a');
-        $query = $builder->where('a.project IS NULL')->getQuery();
-        $globalActivities = $query->getResult();
-        if (count($globalActivities)) {
-            $activities["__GLOBAL"] = $globalActivities;
-        };
-
-        if (empty($activities)) {
-            throw new NoActivitiesException('Could not find valid activity meta data');
-        }
-
-        return $activities;
-    }
-
-    /**
-     * @param FormBuilderInterface $formbuilder
-     * @param Activity[] $activities
-     * @return FormInterface
-     */
-    private function buildLogForm(FormBuilderInterface $formbuilder, array $activities) {
-        $choices = [];
-
-        foreach ($activities as $project => $_activities) {
-            $subChoices = [];
-            foreach ($_activities as $activity) {
-                $subChoices[$activity->getName()] = $activity->getId();
-            }
-            $choices[$project] = $subChoices;
-        }
-
-        $buttonAttr = ['class' => 'btn-time'];
-
-        return $formbuilder
-            ->add('activity', ChoiceType::class, [ 'choices' => $choices ])
-            ->add(
-                'startDateTime',
-                DateType::class,
-                [
-                    'html5' => true,
-                    'format' => 'yyyy-MM-dd',
-                    'data' => new \DateTime(),
-                    'widget' => "single_text",
-                ]
+    public function getRegisteredHosts(): JsonResponse
+    {
+        $settingsEntities = $this->settingRepo->findAll();
+        return $this->makeJsonResponse(
+            array_map(
+                function (SettingEntity $settingsEntity) {
+                    return $this->settingsEntityToArray($settingsEntity);
+                },
+                $settingsEntities
             )
-            ->add('description', TextareaType::class, [ 'required' => false ])
-            ->add('duration', NumberType::class)
-            ->add('inc15', ButtonType::class, [
-                'label' => '+', 'attr' => array_merge( $buttonAttr, [ 'data-time' => '15'])
-            ])
-            ->add('dec15', ButtonType::class, [
-                'label' => '-', 'attr' => array_merge( $buttonAttr, [ 'data-time' => '-15'])
-            ])
-            ->add('inc60', ButtonType::class, [
-                'label' => '+', 'attr' => array_merge( $buttonAttr, [ 'data-time' => '60'])
-            ])
-            ->add('dec60', ButtonType::class, [
-                'label' => '-', 'attr' => array_merge( $buttonAttr, [ 'data-time' => '-60'])
-            ])
-            ->add('send', SubmitType::class)
-            ->getForm();
+        );
     }
 
-    private function processForm($form, $user, $cardId) {
-        // data is an array with "name", "email", and "message" keys
-        $data = $form->getData();
-        $activity = $this->activityRepository->find($data['activity']);
-        $begin = $data['startDateTime'];
-        $duration = \DateInterval::createFromDateString(round($data['duration']) . ' minutes');
+    /**
+     * @Route(path="/project/{project}", name="chrome_set_project", methods={"POST"})
+     *
+     * @param Request $request
+     * @param Project $project
+     * @return JsonResponse
+     */
+    public function setProject(Request $request, Project $project): JsonResponse
+    {
+        $projectFromPlugin = $request->get("projectId");
+
+        $meta = new ProjectMeta();
+        $meta->setName(ProjectFieldSubscriber::PROJECT_ID);
+        $meta->setValue($projectFromPlugin);
+        $project->setMetaField($meta);
+
+        $this->logger->debug("Setting project assoc", ["projectId" => $project->getId(), "projectFromPlugin" => $projectFromPlugin]);
+
+        // TODO Do I need both persists?
+        $this->entityManager->persist($meta);
+        $this->entityManager->persist($project);
+        $this->entityManager->flush();
+
+        return $this->makeJsonResponse($this->projectToArray($project));
+    }
+
+    /**
+     * @Route(path="/project/{hostname}", name="chrome_delete_project", methods={"DELETE"})
+     *
+     * @param Request $request
+     * @param SettingRepo $settingRepo
+     * @return JsonResponse
+     */
+    public function deleteProject(Request $request, SettingRepo $settingRepo, string $hostname): JsonResponse
+    {
+        $settingRepo->removeByHost($hostname);
+        return $this->makeJsonResponse([]);
+    }
+
+    /**
+     * @Route(path="/project", name="chrome_savehost", methods={"POST"})
+     *
+     * @param Request $request
+     * @param SettingRepo $settingRepo
+     * @return JsonResponse
+     * @throws Exception
+     */
+    public function postSaveHostSetting(Request $request, SettingRepo $settingRepo): JsonResponse
+    {
+        $payload = json_decode($request->getContent(), true);
+        $this->logger->debug("Save host", ['payload' => $payload]);
+
+        $settingEntity = new SettingEntity();
+
+        $settingEntity->setHostname($payload['hostname']);
+        $settingEntity->setProjectRegex($payload['projectRegex']);
+        $settingEntity->setIssueRegex($payload['issueRegex']);
+
+        $settingRepo->save($settingEntity);
+
+        if ($payload['oldHostName'] != $payload['hostname']) {
+            $settingRepo->removeByHost($payload['oldHostName']);
+        }
+
+        return $this->makeJsonResponse($this->settingsEntityToArray($settingEntity));
+    }
+
+    /**
+     * @Route(path="/logtime", name="chrome_logtime", methods={"POST"})
+     *
+     * @param Request $request
+     * @param UserRepository $userRepository
+     * @param ActivityRepository $activityRepository
+     * @return JsonResponse
+     * @throws Exception
+     */
+    public function postLogTime(
+        Request $request,
+        UserRepository $userRepository,
+        ActivityRepository $activityRepository
+    ): JsonResponse {
+        $issueId = $request->get('issueId');
+        $payload = json_decode($request->getContent(), true);
+        $this->logger->debug("postLogTime", ["issueId" => $issueId, "payload" => $payload]);
+
+        $activityId = $payload['activity'];
+        $duration = $payload['duration'];
+        $date = $payload['date'];
+        $description = $payload['description'];
+        $link = $payload['link'];
+
+        $currentUser = $this->getUser();
+        if (!$currentUser) {
+            // During dev there is no user so if we are in dev mode log time as user 1
+            if ($this->kernel->getEnvironment() != "dev") {
+                throw new HttpException(sprintf("No such user: '%s'", $currentUser));
+            }
+            $users = $userRepository->findAll();
+            $user = $users[0];
+        } else {
+            $user = $userRepository->findOneBy(['username' => $currentUser->getUsername()]);
+        }
+
+        $activity = $activityRepository->find($activityId);
+        $begin = new DateTime($date);
+        $duration = DateInterval::createFromDateString(round($duration) . ' minutes');
         $end = clone $begin;
         $end->add($duration);
         $timesheet = new Timesheet();
         $timesheet->setActivity($activity);
         $timesheet->setBegin($begin);
         $timesheet->setEnd($end);
-        $timesheet->setDescription($data['description']);
+        $timesheet->setDescription($description);
         $timesheet->setProject($activity->getProject());
         $timesheet->setUser($user);
 
-        if ($cardId) {
-            $cardIdMeta = (new TimesheetMeta())->setName('ChromePlugin Card ID')->setValue($cardId);
-            $timesheet->setMetaField($cardIdMeta);
-        }
+        $issueIdMeta = (new TimesheetMeta())->setName(TimesheetFieldSubscriber::ISSUE_ID)->setValue($issueId);
+        $timesheet->setMetaField($issueIdMeta);
+        $issueLinkMeta = (new TimesheetMeta())->setName(TimesheetFieldSubscriber::ISSUE_LINK)->setValue($link);
+        $timesheet->setMetaField($issueLinkMeta);
 
         $this->entityManager->persist($timesheet);
         $this->entityManager->flush();
+
+        return $this->makeJsonResponse(['timesheetId' => $timesheet->getId()]);
+    }
+
+    /**
+     * @Route(path="/activities", name="chrome_activities", methods={"GET"})
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getActivities(Request $request): JsonResponse
+    {
+        return $this->makeJsonResponse($this->activities($request->get("boardId")));
+    }
+
+    /**
+     * @Route(path="/projects", name="chrome_projects", methods={"GET"})
+     *
+     * @return JsonResponse
+     */
+    public function getProjects(): JsonResponse
+    {
+        // Fetch all projects
+        $projectEntities = $this->entityManager
+            ->getRepository(Project::class)
+            ->findAll();
+        $projects = [];
+        foreach ($projectEntities as $entity) {
+            if ($entity->isVisible()) {
+                $projects[] = $this->projectToArray($entity);
+            }
+        }
+        return $this->makeJsonResponse($projects);
+    }
+
+    /**
+     * @Route(path="/history/{issueId}", name="chrome_history", methods={"GET"})
+     *
+     * @param string $issueId
+     * @return JsonResponse
+     */
+    public function getHistory(string $issueId): JsonResponse
+    {
+        $history = $this->history($issueId);
+        // TODO inline this when it's working
+        $data = array_map(
+            function (Timesheet $timesheet) {
+                return [
+                    'id' => $timesheet->getId(),
+                    'duration' => $timesheet->getDuration(),
+                    'user' => $timesheet->getUser()->getUsername(),
+                    'activity' => $timesheet->getActivity()->getName(),
+                    'description' => $timesheet->getDescription(),
+                    'date' => $timesheet->getBegin()->format("d/m/Y"),
+                ];
+            },
+            $history
+        );
+        return $this->makeJsonResponse($data);
     }
 }
