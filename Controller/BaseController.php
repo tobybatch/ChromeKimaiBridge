@@ -9,10 +9,12 @@ use App\Entity\TimesheetMeta;
 use Doctrine\ORM\EntityManagerInterface;
 use KimaiPlugin\ChromePluginBundle\Entity\SettingEntity;
 use KimaiPlugin\ChromePluginBundle\EventSubscriber\TimesheetFieldSubscriber;
+use KimaiPlugin\ChromePluginBundle\Exception\ProjectNotFoundException;
 use KimaiPlugin\ChromePluginBundle\Repository\SettingRepo;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\KernelInterface;
 
 class BaseController extends AbstractController
@@ -35,12 +37,10 @@ class BaseController extends AbstractController
     protected KernelInterface $kernel;
 
     public function __construct(
-        KernelInterface $kernel,
         EntityManagerInterface $entityManager,
         SettingRepo $settingsRepo,
         LoggerInterface $logger
     ) {
-        $this->kernel = $kernel;
         $this->entityManager = $entityManager;
         $this->settingRepo = $settingsRepo;
         $this->logger = $logger;
@@ -57,7 +57,7 @@ class BaseController extends AbstractController
             $roles = $this->getUser()->getRoles();
         }
 
-        if ($this->kernel->getEnvironment() == "dev") {
+        if ($this->getParameter('kernel.environment') === "dev") {
             $roles[] = "ROLE_ADMIN";
         }
 
@@ -121,14 +121,13 @@ class BaseController extends AbstractController
      * @param array $data
      * @return array|JsonResponse
      */
-    protected function makeJsonResponse(array $data): JsonResponse
+    protected function makeJsonResponse(array $data, $status = 200): JsonResponse
     {
-        $response = new JsonResponse(
+        return new JsonResponse(
             $data,
-            200,
+            $status,
             ['Access-Control-Allow-Origin' => '*']
         );
-        return $response;
     }
 
     /**
@@ -139,9 +138,9 @@ class BaseController extends AbstractController
     {
         $projects = $this->getProjectsById($projectId);
         if (count($projects) == 0) {
-            $this->logger->warning("Could not find valid project meta data");
-            return [];
+            throw new NotFoundHttpException("Could not find valid project meta data");
         }
+        $this->logger->debug("Activities: Found project metas", [$projectId => count($projects)]);
 
         $activityRepo = $this->entityManager->getRepository(Activity::class);
 
@@ -151,6 +150,10 @@ class BaseController extends AbstractController
             if (count($proj_activities)) {
                 $activities[$project->getName()] = array_map(array($this, 'activityToArray'), $proj_activities);
             }
+            $this->logger->debug(
+                "Activities: Found project activities",
+                [$project->getName() => count($proj_activities)]
+            );
         }
 
         $builder = $activityRepo->createQueryBuilder('a');
@@ -159,9 +162,10 @@ class BaseController extends AbstractController
         if (count($global_act)) {
             $activities["Global"] = array_map(array($this, 'activityToArray'), $global_act);
         }
+        $this->logger->debug("Activities: Found global activities", ["Global" => count($global_act)]);
 
         if (empty($activities)) {
-            $this->logger->warning('Could not find valid activity meta data');
+            $this->logger->warning('Activities: Could not find valid activity meta data');
         }
 
         return $activities;
@@ -174,7 +178,7 @@ class BaseController extends AbstractController
     protected function history($issueId): array
     {
         // TODO Make this an inner join rather than code
-        $this->logger->debug("Fetching history", ['issueId' => $issueId]);
+        $this->logger->debug("History:    Fetching history", ['issueId' => $issueId]);
         $timeSheetMetas = $this->entityManager
             ->getRepository(TimesheetMeta::class)
             ->findBy(
@@ -183,13 +187,10 @@ class BaseController extends AbstractController
                     "value" => $issueId,
                 ]
             );
-        $this->logger->debug("Found metas", ['count' => count($timeSheetMetas)]);
+        $this->logger->debug("History:    Found metas", ['count' => count($timeSheetMetas)]);
         $timeSheets = [];
         foreach ($timeSheetMetas as $timesheetMeta) {
-            if ($timesheetMeta->getEntity()->getUser() === $this->getUser() || $this->kernel->getEnvironment(
-                ) === "dev") {
-                $timeSheets[] = $timesheetMeta->getEntity();
-            }
+            $timeSheets[] = $timesheetMeta->getEntity();
         }
 
         return $timeSheets;
@@ -224,7 +225,10 @@ class BaseController extends AbstractController
                     ['uri' => $uri, 'projectRegex' => $settingsEntity->getProjectRegex()]
                 );
             }
-            $projectId = $matches[0];
+            if (count($matches) === 0) {
+                throw new ProjectNotFoundException($settingsEntity);
+            }
+            $projectId = $this->cleanAZ($matches[0]);
             $this->logger->debug("projectId", ["projectId" => $projectId]);
 
             // Get issue id
@@ -234,7 +238,12 @@ class BaseController extends AbstractController
                     ['uri' => $uri, 'issueRegex' => $settingsEntity->getIssueRegex()]
                 );
             }
-            $issueId = $matches[0];
+            if (count($matches)) {
+                $issueId = $this->cleanAZ($matches[0]);
+            } else {
+                // If there is no issue id then use project id.  This way time can be logged against the project
+                $issueId = $projectId;
+            }
             $this->logger->debug("issueId", ["issueId" => $issueId]);
 
             $projects = array_map(
@@ -257,6 +266,12 @@ class BaseController extends AbstractController
             'settings' => $settings,
             'projects' => $projects,
             'role' => $this->roles(),
+            'env' => $this->getParameter('kernel.environment'),
         ];
+    }
+
+    private function cleanAZ($input)
+    {
+        return preg_replace('/\W/', '', $input);
     }
 }

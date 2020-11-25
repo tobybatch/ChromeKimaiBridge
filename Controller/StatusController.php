@@ -3,6 +3,7 @@
 namespace KimaiPlugin\ChromePluginBundle\Controller;
 
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\Routing\Annotation\Route;
 
@@ -24,4 +25,14 @@ class StatusController extends BaseController
             ]
         );
     }
+
+    /**
+     * @Route(path="info", name="chrome_info", methods={"GET"})
+     */
+    public function getInfo(): Response
+    {
+        return new Response("<html><body>Foo</body></html>");
+    }
+
+
 }

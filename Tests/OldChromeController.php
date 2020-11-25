@@ -7,14 +7,13 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
-class ChromeControllerTest extends WebTestCase
+class OldChromeController extends WebTestCase
 {
-
+/*
     public function testGetStatus()
     {
         $client = self::createClient();
         $client->request("GET", "/chrome/status");
-        /** @var RedirectResponse $response */
         $response = $client->getResponse();
         self::assertInstanceOf(JsonResponse::class, $response);
         self::assertEquals(200, $response->getStatusCode());
@@ -67,4 +66,5 @@ class ChromeControllerTest extends WebTestCase
         self::assertEquals($data['domain'],  parse_url($testUri, PHP_URL_HOST));
 
     }
+    */
 }

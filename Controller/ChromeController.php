@@ -14,6 +14,7 @@ use Exception;
 use KimaiPlugin\ChromePluginBundle\Entity\SettingEntity;
 use KimaiPlugin\ChromePluginBundle\EventSubscriber\ProjectFieldSubscriber;
 use KimaiPlugin\ChromePluginBundle\EventSubscriber\TimesheetFieldSubscriber;
+use KimaiPlugin\ChromePluginBundle\Exception\ProjectNotFoundException;
 use KimaiPlugin\ChromePluginBundle\Repository\SettingRepo;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -41,12 +42,12 @@ class ChromeController extends BaseController
         if (empty($uri)) {
             throw new RuntimeException("No URI specified.");
         }
-        $data = $this->getInitData($uri);
-        $response = $this->makeJsonResponse($data);
-
-        $this->logger->debug("response", ["response" => $response]);
-
-        return $response;
+        try {
+            $data = $this->getInitData($uri);
+            return $this->makeJsonResponse($data);
+        } catch (ProjectNotFoundException $projectNotFoundException) {
+            return $this->makeJsonResponse($this->settingsEntityToArray($projectNotFoundException->getSettingEntity()), 422);
+        }
     }
 
     /**
@@ -96,11 +97,11 @@ class ChromeController extends BaseController
     /**
      * @Route(path="/project/{hostname}", name="chrome_delete_project", methods={"DELETE"})
      *
-     * @param Request $request
      * @param SettingRepo $settingRepo
+     * @param string $hostname
      * @return JsonResponse
      */
-    public function deleteProject(Request $request, SettingRepo $settingRepo, string $hostname): JsonResponse
+    public function deleteProject(SettingRepo $settingRepo, string $hostname): JsonResponse
     {
         $settingRepo->removeByHost($hostname);
         return $this->makeJsonResponse([]);

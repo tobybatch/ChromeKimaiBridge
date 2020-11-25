@@ -4,6 +4,8 @@
 namespace KimaiPlugin\ChromePluginBundle\Entity;
 
 
+use Doctrine\ORM\Mapping as ORM;
+
 /**
  * Class SettingEntity
  * @package KimaiPlugin\ChromePluginBundle\Entity
@@ -87,5 +89,4 @@ class SettingEntity
     {
         return $this->toJson();
     }
-
 }
