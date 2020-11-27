@@ -8,6 +8,7 @@ use App\Entity\ProjectMeta;
 use App\Entity\TimesheetMeta;
 use Doctrine\ORM\EntityManagerInterface;
 use KimaiPlugin\ChromePluginBundle\Entity\SettingEntity;
+use KimaiPlugin\ChromePluginBundle\EventSubscriber\ProjectFieldSubscriber;
 use KimaiPlugin\ChromePluginBundle\EventSubscriber\TimesheetFieldSubscriber;
 use KimaiPlugin\ChromePluginBundle\Exception\ProjectNotFoundException;
 use KimaiPlugin\ChromePluginBundle\Repository\SettingRepo;
@@ -57,10 +58,6 @@ class BaseController extends AbstractController
             $roles = $this->getUser()->getRoles();
         }
 
-        if ($this->getParameter('kernel.environment') === "dev") {
-            $roles[] = "ROLE_ADMIN";
-        }
-
         return $roles;
     }
 
@@ -83,6 +80,13 @@ class BaseController extends AbstractController
      */
     protected function projectToArray(Project $project): array
     {
+        $metas = [];
+        foreach ($project->getMetaFields() as $meta) {
+            # TODO This seems to be forced to lower case, is that me?
+            if ($meta->getName() === strtolower(ProjectFieldSubscriber::PROJECT_ID)) {
+                $metas[] = $meta->getValue();
+            }
+        }
         return
             [
                 'id' => $project->getId(),
@@ -90,7 +94,8 @@ class BaseController extends AbstractController
                 'customer' => [
                     'id' => $project->getCustomer()->getId(),
                     'name' => $project->getCustomer()->getName(),
-                ]
+                ],
+                'projects' => $metas,
             ];
     }
 
@@ -164,10 +169,6 @@ class BaseController extends AbstractController
         }
         $this->logger->debug("Activities: Found global activities", ["Global" => count($global_act)]);
 
-        if (empty($activities)) {
-            $this->logger->warning('Activities: Could not find valid activity meta data');
-        }
-
         return $activities;
     }
 
@@ -201,7 +202,7 @@ class BaseController extends AbstractController
         return ['id' => $activity->getId(), 'name' => $activity->getName()];
     }
 
-    protected function getInitData($uri)
+    protected function initData($uri)
     {
         $this->logger->debug("uri", ["uri" => $uri]);
 
@@ -252,11 +253,13 @@ class BaseController extends AbstractController
                 },
                 $this->getProjectsById($projectId)
             );
+            $role = $this->roles();
         } else {
-            $settings = [];
             $projectId = "";
             $issueId = "";
+            $settings = [];
             $projects = [];
+            $role = [];
         }
 
         return [
@@ -265,7 +268,7 @@ class BaseController extends AbstractController
             'issueId' => $issueId,
             'settings' => $settings,
             'projects' => $projects,
-            'role' => $this->roles(),
+            'role' => $role,
             'env' => $this->getParameter('kernel.environment'),
         ];
     }

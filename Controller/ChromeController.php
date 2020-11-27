@@ -7,6 +7,7 @@ use App\Entity\ProjectMeta;
 use App\Entity\Timesheet;
 use App\Entity\TimesheetMeta;
 use App\Repository\ActivityRepository;
+use App\Repository\ProjectRepository;
 use App\Repository\UserRepository;
 use DateInterval;
 use DateTime;
@@ -43,7 +44,7 @@ class ChromeController extends BaseController
             throw new RuntimeException("No URI specified.");
         }
         try {
-            $data = $this->getInitData($uri);
+            $data = $this->initData($uri);
             return $this->makeJsonResponse($data);
         } catch (ProjectNotFoundException $projectNotFoundException) {
             return $this->makeJsonResponse($this->settingsEntityToArray($projectNotFoundException->getSettingEntity()), 422);
@@ -128,7 +129,7 @@ class ChromeController extends BaseController
 
         $settingRepo->save($settingEntity);
 
-        if ($payload['oldHostName'] != $payload['hostname']) {
+        if (array_key_exists('oldHostName', $payload) && $payload['oldHostName'] != $payload['hostname']) {
             $settingRepo->removeByHost($payload['oldHostName']);
         }
 
@@ -141,37 +142,30 @@ class ChromeController extends BaseController
      * @param Request $request
      * @param UserRepository $userRepository
      * @param ActivityRepository $activityRepository
+     * @param ProjectRepository $projectRepository
      * @return JsonResponse
      * @throws Exception
      */
     public function postLogTime(
         Request $request,
         UserRepository $userRepository,
-        ActivityRepository $activityRepository
+        ActivityRepository $activityRepository,
+        ProjectRepository $projectRepository
     ): JsonResponse {
         $issueId = $request->get('issueId');
         $payload = json_decode($request->getContent(), true);
         $this->logger->debug("postLogTime", ["issueId" => $issueId, "payload" => $payload]);
 
         $activityId = $payload['activity'];
+        $projectId = $payload['project'];
         $duration = $payload['duration'];
         $date = $payload['date'];
         $description = $payload['description'];
         $link = $payload['link'];
-
-        $currentUser = $this->getUser();
-        if (!$currentUser) {
-            // During dev there is no user so if we are in dev mode log time as user 1
-            if ($this->kernel->getEnvironment() != "dev") {
-                throw new HttpException(sprintf("No such user: '%s'", $currentUser));
-            }
-            $users = $userRepository->findAll();
-            $user = $users[0];
-        } else {
-            $user = $userRepository->findOneBy(['username' => $currentUser->getUsername()]);
-        }
+        $user = $userRepository->findOneBy(['username' => $this->getUser()->getUsername()]);
 
         $activity = $activityRepository->find($activityId);
+        $project = $projectRepository->find($projectId);
         $begin = new DateTime($date);
         $duration = DateInterval::createFromDateString(round($duration) . ' minutes');
         $end = clone $begin;
@@ -181,8 +175,8 @@ class ChromeController extends BaseController
         $timesheet->setBegin($begin);
         $timesheet->setEnd($end);
         $timesheet->setDescription($description);
-        $timesheet->setProject($activity->getProject());
         $timesheet->setUser($user);
+        $timesheet->setProject($project);
 
         $issueIdMeta = (new TimesheetMeta())->setName(TimesheetFieldSubscriber::ISSUE_ID)->setValue($issueId);
         $timesheet->setMetaField($issueIdMeta);

@@ -12,6 +12,9 @@ use Symfony\Component\Routing\Annotation\Route;
  */
 class StatusController extends BaseController
 {
+    const VERSION = "1.0.0";
+    const NAME = "Kimai chrome plugin";
+
     /**
      * @Route(path="status", name="chrome_status", methods={"GET"})
      */
@@ -19,20 +22,10 @@ class StatusController extends BaseController
     {
         return $this->makeJsonResponse(
             [
-                'name' => "Kimai chrome plugin",
-                'version' => "1.0.0",
+                'name' => self::NAME,
+                'version' => self::VERSION,
                 'role' =>$this->roles(),
             ]
         );
     }
-
-    /**
-     * @Route(path="info", name="chrome_info", methods={"GET"})
-     */
-    public function getInfo(): Response
-    {
-        return new Response("<html><body>Foo</body></html>");
-    }
-
-
 }

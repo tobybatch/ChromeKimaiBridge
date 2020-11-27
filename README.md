@@ -42,3 +42,6 @@ Time can be logged directly against a project from a Github issue/project or Tre
  1. Log time and view logged history.
 
 The external board id accepts multiple board references in a comma seperated list.
+
+phpunit --coverage-html ../../../public/coverage/ ./Tests/
+

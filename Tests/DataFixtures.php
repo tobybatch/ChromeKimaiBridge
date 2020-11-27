@@ -13,8 +13,10 @@ use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use Faker\Factory;
 use Faker\Generator;
+use KimaiPlugin\ChromePluginBundle\Entity\SettingEntity;
 use KimaiPlugin\ChromePluginBundle\EventSubscriber\ProjectFieldSubscriber;
 use KimaiPlugin\ChromePluginBundle\EventSubscriber\TimesheetFieldSubscriber;
+use KimaiPlugin\ChromePluginBundle\Repository\SettingRepo;
 
 /**
  * Defines the sample data to load in during controller tests.
@@ -71,16 +73,17 @@ final class DataFixtures extends Fixture
 
         // Create projects
         $projects = [];
-        for ($i = 0; $i < count(BaseControllerTest::PROJECT_NAMES); $i++) {
+        for ($i = 0; $i < count(ControllerTest::PROJECT_NAMES); $i++) {
             $project = new Project();
             $project
                 ->setName($this->faker->catchPhrase)
                 ->setCustomer($customer);
+            $this->manager->persist($project);
             $projects[] = $project;
 
             $projectMeta = new ProjectMeta();
             $projectMeta->setName(ProjectFieldSubscriber::PROJECT_ID);
-            $projectMeta->setValue(BaseControllerTest::PROJECT_NAMES[$i]);
+            $projectMeta->setValue(ControllerTest::PROJECT_NAMES[$i]);
             $this->manager->persist($projectMeta);
 
             $project->setMetaField($projectMeta);
