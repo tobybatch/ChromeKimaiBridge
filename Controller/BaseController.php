@@ -199,8 +199,13 @@ class BaseController extends AbstractController
 
     protected function activityToArray(Activity $activity): array
     {
-        return ['id' => $activity->getId(), 'name' => $activity->getName()];
+      return [
+        'id' => $activity->getId(),
+        'name' => $activity->getName(),
+        'project' => $activity->getProject() ? $this->projectToArray($activity->getProject()) : false
+      ];
     }
+
 
     protected function initData($uri)
     {

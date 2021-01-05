@@ -165,11 +165,15 @@ class ChromeController extends BaseController
         $user = $userRepository->findOneBy(['username' => $this->getUser()->getUsername()]);
 
         $activity = $activityRepository->find($activityId);
-        $project = $projectRepository->find($projectId);
+        $project = $activity->getProject();
+        if (!$project) {
+            $project = $projectRepository->find($projectId);
+        }
         $begin = new DateTime($date);
         $duration = DateInterval::createFromDateString(round($duration) . ' minutes');
         $end = clone $begin;
         $end->add($duration);
+
         $timesheet = new Timesheet();
         $timesheet->setActivity($activity);
         $timesheet->setBegin($begin);

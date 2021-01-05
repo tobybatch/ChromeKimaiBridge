@@ -9,14 +9,13 @@ use App\Entity\ProjectMeta;
 use App\Entity\Timesheet;
 use App\Entity\TimesheetMeta;
 use App\Entity\User;
+use DateTime;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use Faker\Factory;
 use Faker\Generator;
-use KimaiPlugin\ChromePluginBundle\Entity\SettingEntity;
 use KimaiPlugin\ChromePluginBundle\EventSubscriber\ProjectFieldSubscriber;
 use KimaiPlugin\ChromePluginBundle\EventSubscriber\TimesheetFieldSubscriber;
-use KimaiPlugin\ChromePluginBundle\Repository\SettingRepo;
 
 /**
  * Defines the sample data to load in during controller tests.
@@ -101,16 +100,16 @@ final class DataFixtures extends Fixture
             $timeSheet = new Timesheet();
             $project = $projects[array_rand($projects)];
             $timeSheet
-                ->setActivity($this->getRandomActivity(rand(1,4) > 1 ? $project : null))
+                ->setActivity($this->getRandomActivity(rand(1, 4) > 1 ? $project : null))
                 ->setProject($project)
                 ->setDescription($this->faker->text)
                 ->setUser($users[array_rand($users)])
                 ->setBegin($this->getStartDate())
-                ->setDuration(rand(1,12) * 15);
+                ->setDuration(rand(1, 12) * 15);
             $this->manager->persist($timeSheet);
             $timeSheetsMeta = new TimesheetMeta();
             $timeSheetsMeta->setName(TimesheetFieldSubscriber::ISSUE_ID);
-            $issueId = $project->getMetaField(ProjectFieldSubscriber::PROJECT_ID)->getValue() . ":" . rand(1,3);
+            $issueId = $project->getMetaField(ProjectFieldSubscriber::PROJECT_ID)->getValue() . ":" . rand(1, 3);
             $timeSheetsMeta->setValue($issueId);
             $this->manager->persist($timeSheetsMeta);
 
@@ -147,7 +146,7 @@ final class DataFixtures extends Fixture
 
     private function getStartDate()
     {
-        $start = \DateTime::createFromFormat('Y-m-d', $this->startDate);
+        $start = DateTime::createFromFormat('Y-m-d', $this->startDate);
         $start->modify("+ " . rand(0, 60) . " days");
         $start->modify('+ ' . rand(1, 86400) . ' seconds');
         return $start;
