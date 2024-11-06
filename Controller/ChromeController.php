@@ -36,7 +36,7 @@ use Symfony\Component\Routing\Annotation\Route;
  * @Route(path="/chrome/")
  * @Security("is_granted('create_own_timesheet')")
  */
-class ChromeController extends TimesheetAbstractController
+abstract class ChromeController extends TimesheetAbstractController
 {
     /**
      * @var TimesheetService
